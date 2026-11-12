@@ -1,0 +1,12 @@
+# YOLO Dataset Configuration: Ground Harvest Walnut Finder
+# Used after shaking/harvesting to spot fallen walnuts among dead leaves, hulls, grass, and soil.
+
+path: ../datasets/ground
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: walnut_in_shell
+  1: walnut_in_hull
+

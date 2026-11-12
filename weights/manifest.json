@@ -1,0 +1,43 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-11-12T17:00:00Z",
+  "models": {
+    "canopy": {
+      "id": "walnut_canopy_v1",
+      "displayName": "Canopy Yield & Health Detector",
+      "ptFile": "weights/canopy/walnut_canopy.pt",
+      "mobileFile": "weights/canopy/walnut_canopy.tflite",
+      "inputSize": 640,
+      "confidenceThreshold": 0.42,
+      "iouThreshold": 0.45,
+      "ready": false,
+      "fallbackSimulation": true,
+      "classes": [
+        { "id": 0, "name": "walnut_green", "label": "Healthy Canopy Walnut", "color": "#00E676" },
+        { "id": 1, "name": "walnut_hull_split", "label": "Hull-Split (Harvest Ready)", "color": "#FFAB00" },
+        { "id": 2, "name": "walnut_blight_damaged", "label": "Blight / Husk Anomaly", "color": "#FF5252" }
+      ],
+      "occlusionMultipliers": {
+        "open": 1.35,
+        "standard": 1.55,
+        "dense": 1.80
+      }
+    },
+    "ground": {
+      "id": "walnut_ground_v1",
+      "displayName": "Post-Harvest Ground Nut Finder",
+      "ptFile": "weights/ground/walnut_ground.pt",
+      "mobileFile": "weights/ground/walnut_ground.tflite",
+      "inputSize": 640,
+      "confidenceThreshold": 0.38,
+      "iouThreshold": 0.45,
+      "ready": false,
+      "fallbackSimulation": true,
+      "classes": [
+        { "id": 0, "name": "walnut_in_shell", "label": "Clean Fallen Walnut", "color": "#CCFF00" },
+        { "id": 1, "name": "walnut_in_hull", "label": "Fallen Walnut in Hull", "color": "#FFD600" }
+      ]
+    }
+  }
+}
+

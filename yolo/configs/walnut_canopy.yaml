@@ -1,0 +1,13 @@
+# YOLO Dataset Configuration: In-Tree Walnut Canopy Counter
+# Used for estimating walnut count on trees, hull-split readiness, and blight checks.
+
+path: ../datasets/canopy
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: walnut_green
+  1: walnut_hull_split
+  2: walnut_blight_damaged
+

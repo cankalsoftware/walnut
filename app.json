@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "WalnutIQ: Tree Care & AI Count",
+    "slug": "walnutiq-tree-care-ai-count",
+    "description": "Walnut Tree Care & AI Counter: YOLO yield estimator, ground picker, Tuya sensor telemetry & annual care plan.",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "walnutiq",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#DCEAD5",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.walnutiq.analysis",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used to count walnuts in tree canopies, find fallen walnuts on the ground during harvest, and analyze walnut growth."
+      }
+    },
+    "android": {
+      "package": "com.walnutiq.analysis",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#DCEAD5"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow WalnutIQ: Tree Care & AI Count to use the camera for YOLO walnut counting and ground harvest detection."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#6B9E58"
+        }
+      ],
+      "expo-sqlite",
+      "expo-secure-store"
+    ]
+  }
+}
