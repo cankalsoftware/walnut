@@ -82,14 +82,14 @@ pnpm exec expo start --clear
 
 ---
 
-## Part 4: How to Run the Web App (`web-app/`) & Background Worker
+## Part 4: How to Run the Web App (`web-app/`) & Background Worker (`backend/`)
 
-Because scraping, CLIP filtering, labeling, and YOLO11 training are heavy background jobs, they live inside `web-app/`.
+The **Vite Admin UI** lives in `web-app/` (deployed to Vercel), while the heavy Python scraping, CLIP filtering, labeling, and YOLO11 training jobs live in `backend/` (deployed to your VPS).
 
 ### Step 1: Start the Python Background Worker (Terminal 1)
 Open a terminal in the main folder and run:
 ```bash
-python web-app/backend/server.py
+python backend/server.py
 ```
 *(Leave this terminal open — it runs on `http://127.0.0.1:8000` and executes your scraping, CLIP, labeling, and YOLO11 training jobs).*
 
@@ -116,7 +116,7 @@ Because `web-app/` is completely separated from the mobile app, deploying to Ver
 4. **Add Environment Variables in Vercel**:
    - `VITE_CONVEX_URL` = your Convex URL
    - `VITE_CLERK_PUBLISHABLE_KEY` = your Clerk Publishable Key
-   - `VITE_ML_WORKER_URL` = `http://127.0.0.1:8000` (this lets your browser on `https://walnut.pinarlik.com` talk directly to your PC's local Python worker when `python web-app/backend/server.py` is running on your computer!).
+   - `VITE_ML_WORKER_URL` = `http://127.0.0.1:8000` (this lets your browser on `https://walnut.pinarlik.com` talk directly to your PC's local Python worker when `python backend/server.py` is running on your computer!).
 5. Click **Deploy**.
 6. In Vercel Project Settings → **Domains**, add **`walnut.pinarlik.com`** and add the CNAME record (`cname.vercel-dns.com`) in your `pinarlik.com` DNS settings.
 
@@ -128,52 +128,52 @@ You can trigger every step either from the **Web App buttons** (`walnut.pinarlik
 
 ### 1. Install Python Requirements (If Needed)
 ```bash
-python -m pip install -r web-app/yolo/requirements.txt
+python -m pip install -r backend/yolo/requirements.txt
 python -m pip install ftfy regex git+https://github.com/ultralytics/CLIP.git
 ```
 
 ### 2. Scrape Missing Ground & Canopy Images (Bing / Flickr / DuckDuckGo)
 ```bash
-python web-app/yolo/dataset_builder/1_scrape_images.py --target all --max-per-query 50
+python backend/yolo/dataset_builder/1_scrape_images.py --target all --max-per-query 50
 ```
 
 ### 3. Filter Junk & Sort Classes with Zero-Shot CLIP (`ultralytics/CLIP`)
 ```bash
-python web-app/yolo/dataset_builder/2_clip_filter_and_classify.py --export-yolo-cls
+python backend/yolo/dataset_builder/2_clip_filter_and_classify.py --export-yolo-cls
 ```
 
 ### 4. Label Bounding Boxes with `labelImg` & Split into Train/Val/Test
 ```bash
 # Create classes.txt files:
-python web-app/yolo/dataset_builder/3_prepare_for_labeling.py --setup-classes
+python backend/yolo/dataset_builder/3_prepare_for_labeling.py --setup-classes
 
 # After drawing boxes in labelImg, finalize the 80/15/5 split:
-python web-app/yolo/dataset_builder/3_prepare_for_labeling.py --finalize-splits
+python backend/yolo/dataset_builder/3_prepare_for_labeling.py --finalize-splits
 ```
 
 ### 5. Import `1wuming/WalnutData` (Hugging Face 30,240 Canopy Images)
 ```bash
-python web-app/yolo/dataset_builder/4_import_walnutdata_hf.py --source C:/Users/uyko7/Downloads/WalnutData --max-samples 3000
+python backend/yolo/dataset_builder/4_import_walnutdata_hf.py --source C:/Users/uyko7/Downloads/WalnutData --max-samples 3000
 ```
 
 ### 6. Train YOLO11 & Export `.pt` / `.tflite` to `/weights` for the Mobile App
 ```bash
 # Train Mode 1: Canopy Counter (yolo11s.pt)
-python web-app/yolo/scripts/train.py --mode canopy --arch yolo11 --epochs 100
+python backend/yolo/scripts/train.py --mode canopy --arch yolo11 --epochs 100
 
 # Train Mode 2: Ground Picker (yolo11n.pt)
-python web-app/yolo/scripts/train.py --mode ground --arch yolo11 --epochs 100
+python backend/yolo/scripts/train.py --mode ground --arch yolo11 --epochs 100
 
 # Export trained .pt to /weights/canopy/ & /weights/ground/ and update /weights/manifest.json:
-python web-app/yolo/scripts/export_weights.py --mode canopy --weights web-app/yolo/runs/walnut_canopy_yolo11/weights/best.pt
-python web-app/yolo/scripts/export_weights.py --mode ground --weights web-app/yolo/runs/walnut_ground_yolo11/weights/best.pt
+python backend/yolo/scripts/export_weights.py --mode canopy --weights backend/yolo/runs/walnut_canopy_yolo11/weights/best.pt
+python backend/yolo/scripts/export_weights.py --mode ground --weights backend/yolo/runs/walnut_ground_yolo11/weights/best.pt
 ```
 
 ---
 
 ## Part 7: Running the Background ML Worker in Docker on Your VPS (Production)
 
-For production, **`https://walnut.pinarlik.com`** runs on **Vercel** (`web-app/`), while the heavy Python worker (`web-app/backend/server.py` + `web-app/yolo/`) runs independently inside **Docker on your VPS** (for example at **`https://ml-walnut.pinarlik.com`**).
+For production, **`https://walnut.pinarlik.com`** runs on **Vercel** (`web-app/`), while the heavy Python worker (`backend/server.py` + `backend/yolo/`) runs independently inside **Docker on your VPS** (for example at **`https://ml-walnut.pinarlik.com`**).
 
 ### Step 1: Install Docker on Your VPS (One-Time), Clone Repo & Start
 SSH into your Ubuntu/Debian VPS and install Docker + Docker Compose if not already installed:
@@ -186,7 +186,7 @@ sudo usermod -aG docker $USER
 Then clone the repo and start the container:
 ```bash
 git clone <your-github-repo-url> walnut
-cd walnut/web-app/backend
+cd walnut/backend
 docker compose up -d --build
 ```
 - **Check it is running**:

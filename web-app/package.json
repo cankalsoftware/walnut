@@ -8,7 +8,7 @@
     "dev": "vite --port 5173",
     "build": "vite build",
     "preview": "vite preview --port 4173",
-    "bg-worker": "python backend/server.py"
+    "bg-worker": "python ../backend/server.py"
   },
   "dependencies": {
     "@clerk/react": "^6.18.7",

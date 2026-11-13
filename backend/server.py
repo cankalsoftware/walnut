@@ -30,9 +30,9 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-WEB_APP_ROOT = Path(__file__).resolve().parent.parent
-REPO_ROOT = WEB_APP_ROOT.parent
-YOLO_DIR = WEB_APP_ROOT / "yolo"
+BACKEND_DIR = Path(__file__).resolve().parent
+REPO_ROOT = BACKEND_DIR.parent
+YOLO_DIR = BACKEND_DIR / "yolo"
 BUILDER_DIR = YOLO_DIR / "dataset_builder"
 WEIGHTS_MANIFEST = REPO_ROOT / "weights" / "manifest.json"
 ADMIN_WORKER_TOKEN = os.environ.get("ADMIN_WORKER_TOKEN", "").strip()

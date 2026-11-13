@@ -1,12 +1,12 @@
 # WalnutIQ Background ML Worker Dockerfile
 # Build from repository root:
-#   docker build -f web-app/backend/Dockerfile -t walnutiq-ml-worker .
+#   docker build -f backend/Dockerfile -t walnutiq-ml-worker .
 
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    YOLO_CONFIG_DIR=/workspace/web-app/yolo/.ultralytics \
+    YOLO_CONFIG_DIR=/workspace/backend/yolo/.ultralytics \
     HOST=0.0.0.0 \
     PORT=8000
 
@@ -23,18 +23,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /workspace
 
 # Install Python ML & scraping dependencies
-COPY web-app/yolo/requirements.txt /workspace/web-app/yolo/requirements.txt
+COPY backend/yolo/requirements.txt /workspace/backend/yolo/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r /workspace/web-app/yolo/requirements.txt && \
+    pip install --no-cache-dir -r /workspace/backend/yolo/requirements.txt && \
     pip install --no-cache-dir fastapi uvicorn pydantic && \
     pip install --no-cache-dir git+https://github.com/ultralytics/CLIP.git
 
 # Copy backend server, YOLO scripts, and weights manifest
-COPY web-app/backend /workspace/web-app/backend
-COPY web-app/yolo /workspace/web-app/yolo
+COPY backend /workspace/backend
 COPY weights /workspace/weights
 
 EXPOSE 8000
 
-CMD ["python", "web-app/backend/server.py"]
+CMD ["python", "backend/server.py"]
 

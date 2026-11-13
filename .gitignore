@@ -32,14 +32,14 @@ ios/
 *.aab
 *.ipa
 
-# Background Web App YOLO raw datasets & training artifacts (keep exported mobile weights in /weights)
-web-app/yolo/datasets/
-web-app/yolo/runs/
-web-app/yolo/.ultralytics/
-web-app/yolo/dataset_builder/raw_scraped/
-web-app/yolo/dataset_builder/curated/
-web-app/yolo/dataset_builder/rejected_by_clip/
-web-app/yolo/dataset_builder/walnutdata_hf_raw/
+# Background Backend YOLO raw datasets & training artifacts (keep exported mobile weights in /weights)
+backend/yolo/datasets/
+backend/yolo/runs/
+backend/yolo/.ultralytics/
+backend/yolo/dataset_builder/raw_scraped/
+backend/yolo/dataset_builder/curated/
+backend/yolo/dataset_builder/rejected_by_clip/
+backend/yolo/dataset_builder/walnutdata_hf_raw/
 *.pt
 
 # Python cache & OS files
