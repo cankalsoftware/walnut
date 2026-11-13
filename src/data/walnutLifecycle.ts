@@ -106,47 +106,47 @@ export interface CommunityChannel {
 
 export const TUYA_SENSOR_NODES: TuyaSensorNode[] = [
   {
-    id: 'tuya-moisture-01',
+    id: 'sensor-moisture-01',
     metricKey: 'moisture',
     label: 'Soil Moisture',
     valueDisplay: '68%',
     subValueDisplay: '30cm Root Zone',
     statusLabel: 'Optimal',
     iconName: 'water',
-    deviceModel: 'Tuya Zigbee Soil Probe ZG-302',
+    deviceModel: 'Smart Soil Probe • Zone A',
     enabledOnFrontDisplay: true,
   },
   {
-    id: 'tuya-temp-01',
+    id: 'sensor-temp-01',
     metricKey: 'temperature',
     label: 'Orchard Temp',
     valueDisplay: '14.2°C',
     subValueDisplay: 'Soil: 11.8°C • Chill Active',
     statusLabel: 'Optimal',
     iconName: 'thermometer',
-    deviceModel: 'Tuya TH-Sensor Pro',
+    deviceModel: 'Orchard Climate Sensor',
     enabledOnFrontDisplay: true,
   },
   {
-    id: 'tuya-sun-01',
+    id: 'sensor-sun-01',
     metricKey: 'sunlight',
     label: 'Sunlight & UV',
     valueDisplay: '48.5 klux',
     subValueDisplay: 'UV Index 4 • Canopy Clear',
     statusLabel: 'Optimal',
     iconName: 'sunny',
-    deviceModel: 'Tuya Solar Lux & UV Meter',
+    deviceModel: 'Solar & UV Light Sensor',
     enabledOnFrontDisplay: true,
   },
   {
-    id: 'tuya-weather-01',
+    id: 'sensor-weather-01',
     metricKey: 'weather',
     label: 'Weather & RH',
     valueDisplay: '62% RH',
     subValueDisplay: 'No Frost 72h • 1016 hPa',
     statusLabel: 'Watch',
     iconName: 'partly-sunny',
-    deviceModel: 'Tuya Smart Weather Station',
+    deviceModel: 'Orchard Weather Station',
     enabledOnFrontDisplay: true,
   },
 ];
@@ -159,7 +159,7 @@ export const CARE_CYCLES_COUNTDOWNS: CareCycleCountdown[] = [
     cycleName: 'Deep Root Moisture Check',
     countdownText: 'In 2d 14h',
     progressPct: 72,
-    nextActionText: 'Tuya probe at 68% — next deep soak in 2 days',
+    nextActionText: 'Root probe at 68% — next deep soak in 2 days',
   },
   {
     id: 'cycle-feed',
@@ -184,27 +184,27 @@ export const CARE_CYCLES_COUNTDOWNS: CareCycleCountdown[] = [
 export const GUIDANCE_POPUPS: Record<'daily' | 'weekly', GuidancePopupData> = {
   daily: {
     id: 'daily',
-    badge: 'DAILY ORCHARD BRIEFING POPUP',
+    badge: 'DAILY ORCHARD BRIEFING',
     title: 'Today’s Walnut Care & Sensor Guidance',
-    subtitle: 'Automated Morning Check-in • Light Walnut Green Field Mode',
+    subtitle: 'Morning Orchard Check-in',
     cycleHighlight: 'Watering Countdown: 2d 14h remaining • Winter Whitewash in 3 days',
     actionItems: [
-      '💧 Watering: Soil moisture is 68% at 30cm depth (Tuya Probe #1). No irrigation needed today.',
-      '❄️ Winter Prep: Clear remaining dark walnut hulls around Tree #01 & #02 to reduce overwintering husk fly pupae.',
-      '📷 AI Tip: Use Ground Picker mode if any late windfall walnuts remain under fallen leaves.',
+      '💧 Watering: Soil moisture is 68% at 30cm depth. No irrigation needed today.',
+      '❄️ Winter Prep: Clear remaining dark walnut hulls around Tree #01 & #02 to protect against overwintering pests.',
+      '📷 Camera Tip: Use Find Fallen mode if any late windfall walnuts remain under fallen leaves.',
     ],
-    sensorTip: 'Tuya Weather Station reports dry conditions (62% RH, 14.2°C) — ideal window for trunk whitewashing.',
+    sensorTip: 'Orchard Weather Station reports dry conditions (62% RH, 14.2°C) — ideal window for trunk whitewashing.',
   },
   weekly: {
     id: 'weekly',
-    badge: 'WEEKLY CARE & COUNTDOWN DIGEST',
+    badge: 'WEEKLY CARE DIGEST',
     title: '7-Day Walnut Care Cycle & Feed Plan',
     subtitle: 'Weekly Orchard Schedule & Countdown Summary',
-    cycleHighlight: '3 Active Care Countdowns • 14-Day Cloud Sync Clean',
+    cycleHighlight: '3 Active Care Countdowns • Orchard Synced',
     actionItems: [
       '📅 Day 3 Countdown: Apply 50/50 white latex sunscald paint on southwest trunks of young trees.',
       '🧪 Day 5 Countdown: Apply post-harvest Potassium & compost mulch around drip line before winter rains.',
-      '✂️ Pruning Lookahead: Do not prune during wet November days; wait for mid-winter dry dormancy window.',
+      '✂️ Pruning Lookahead: Avoid pruning on wet November days; wait for mid-winter dry dormancy.',
     ],
     sensorTip: 'Cumulative Winter Chill Hours increased by +38 hrs this week (Total: 184 / 800 hrs for Chandler).',
   },
@@ -239,7 +239,7 @@ export const PHENOLOGY_STAGES = [
     id: 'autumn_harvest',
     title: 'Hull Split, Harvest & Ground Picking',
     months: 'Sep – Nov',
-    summary: 'YOLO Canopy Yield final count, shaking at 80% hull split, YOLO Ground Harvest Finder picking & warm-air nut drying (<43°C).',
+    summary: 'AI Canopy Yield final count, shaking at 80% hull split, Ground Harvest Finder picking & warm-air nut drying (<43°C).',
     progressPct: 0,
     active: false,
   },
@@ -368,7 +368,7 @@ export const INITIAL_CARE_TASKS: CareTask[] = [
   },
   {
     id: 'task-harvest-1',
-    title: 'Hull Split Check & YOLO Ground Harvest Picking',
+    title: 'Hull Split Check & Ground Harvest Picking',
     category: 'harvest',
     seasonLabel: 'Autumn Harvest',
     monthRange: 'Sep – Oct',
@@ -378,14 +378,14 @@ export const INITIAL_CARE_TASKS: CareTask[] = [
     completed: true,
     pushNotificationEnabled: true,
     priority: 'high',
-    description: 'Begin harvest when 80% of green hulls split. Shake branches and use the YOLO Ground Finder mode to pick fallen walnuts promptly.',
+    description: 'Begin harvest when 80% of green hulls split. Shake branches and use the Ground Finder camera mode to pick fallen walnuts promptly.',
     dosageOrTip: 'Hull and wash within 24 hours of picking; dry in shade/dehydrator below 43°C (110°F) to 8% moisture.',
   },
 ];
 
 export const COMMUNITY_CHANNELS: CommunityChannel[] = [
   { id: 'general-growers', name: '#general-growers', topic: 'Orchard introductions, regional weather & daily walnut talk', unreadCount: 3 },
-  { id: 'yolo-yield-estimates', name: '#yolo-yield-estimates', topic: 'Share YOLO canopy counts, ground picks & harvest weight checks', unreadCount: 5 },
+  { id: 'yield-counts', name: '#yield-counts', topic: 'Share tree canopy counts, ground picks & harvest weight checks', unreadCount: 5 },
   { id: 'pruning-and-training', name: '#pruning-and-training', topic: 'Central leader shaping, dormant cuts & canopy light management', unreadCount: 0 },
   { id: 'watering-and-feeding', name: '#watering-and-feeding', topic: 'NPK schedules, Zinc/Boron sprays & soil moisture logs', unreadCount: 2 },
   { id: 'pest-and-blight-sos', name: '#pest-and-blight-sos', topic: 'Walnut blight, husk fly traps & frost damage diagnosis', unreadCount: 1 },
@@ -394,12 +394,12 @@ export const COMMUNITY_CHANNELS: CommunityChannel[] = [
 export const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
   {
     id: 'msg-1',
-    channelId: 'yolo-yield-estimates',
+    channelId: 'yield-counts',
     senderName: 'Emre K.',
     senderRole: 'Chandler Grower • 45 Trees',
     senderRegion: 'Bursa / Zone 8b',
     timestamp: '10:14 AM',
-    text: 'Just finished scanning Row 2 with the 4-quadrant Canopy Counter before our final shake! The occlusion estimate was within 4% of our dried crate weight.',
+    text: 'Just finished scanning Row 2 with the 4-quadrant Canopy Counter before our final shake! The estimate was within 4% of our dried crate weight.',
     sharedCard: {
       treeName: 'Tree #01 • North Grove',
       variety: 'Chandler',
@@ -414,7 +414,7 @@ export const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
   },
   {
     id: 'msg-2',
-    channelId: 'yolo-yield-estimates',
+    channelId: 'yield-counts',
     senderName: 'Elena V.',
     senderRole: 'Homestead Orchardist',
     senderRegion: 'Sacramento Valley / Zone 9',
@@ -439,4 +439,63 @@ export const GROWTH_CURVE_SERIES = [
   { month: 'Aug', expectedMm: 36, actualMm: 36.4, stage: 'Kernel Fill' },
   { month: 'Sep', expectedMm: 36.5, actualMm: 36.8, stage: 'Hull Split' },
   { month: 'Oct', expectedMm: 36.5, actualMm: 36.8, stage: 'Harvest Ready' },
+];
+
+export interface ShopProduct {
+  id: string;
+  sku: string;
+  name: string;
+  category: 'sensor' | 'switch' | 'kit';
+  priceUsd: number;
+  description: string;
+  inStock: boolean;
+  iconName: string;
+  imageUrl?: string | null;
+}
+
+export const INITIAL_SHOP_PRODUCTS: ShopProduct[] = [
+  {
+    id: 'prod-1',
+    sku: 'WIQ-SOIL-30',
+    name: 'Deep Root Soil Moisture & Temp Probe',
+    category: 'sensor',
+    priceUsd: 49,
+    description:
+      'Wireless 30cm root-zone moisture & soil temperature sensor for automated watering countdowns.',
+    inStock: true,
+    iconName: 'water',
+  },
+  {
+    id: 'prod-2',
+    sku: 'WIQ-VALVE-01',
+    name: 'Smart Orchard Irrigation Valve Switch',
+    category: 'switch',
+    priceUsd: 64,
+    description:
+      'Remote-controlled solar/DC water valve switch that triggers drip irrigation based on soil thresholds.',
+    inStock: true,
+    iconName: 'toggle',
+  },
+  {
+    id: 'prod-3',
+    sku: 'WIQ-CLIMATE-PRO',
+    name: 'Orchard Weather, Frost & UV Station',
+    category: 'sensor',
+    priceUsd: 89,
+    description:
+      'Tracks air temperature, winter chill hours, sunlight intensity, and early frost alerts.',
+    inStock: true,
+    iconName: 'partly-sunny',
+  },
+  {
+    id: 'prod-4',
+    sku: 'WIQ-KIT-START',
+    name: 'Complete Walnut Orchard Starter Kit',
+    category: 'kit',
+    priceUsd: 179,
+    description:
+      'Includes 1x Soil Moisture Probe, 1x Smart Irrigation Switch, 1x Climate Station & Outdoor Hub.',
+    inStock: true,
+    iconName: 'hardware-chip',
+  },
 ];

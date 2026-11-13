@@ -15,24 +15,25 @@ import {
   CARE_CYCLES_COUNTDOWNS,
   GUIDANCE_POPUPS,
   INITIAL_CARE_TASKS,
-  INITIAL_TREES,
   PHENOLOGY_STAGES,
   TUYA_SENSOR_NODES,
 } from '../../src/data/walnutLifecycle';
+import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
 
 export default function OrchardDashboardScreen() {
   const router = useRouter();
-  const [tasks, setTasks] = useState(INITIAL_CARE_TASKS.slice(0, 3));
+  const { isSignedIn, trees, addOrchardTree, careSetup, userProfile } =
+    useWalnutCloud();
+  const [tasks, setTasks] = useState(INITIAL_CARE_TASKS.slice(0, 2));
   const [activePopup, setActivePopup] = useState<'daily' | 'weekly' | null>(null);
 
-  const totalEstimatedNuts = INITIAL_TREES.reduce(
+  const totalEstimatedNuts = trees.reduce(
     (acc, t) => acc + t.estimatedTotalNuts,
     0
   );
-  const totalEstimatedKg = INITIAL_TREES.reduce(
-    (acc, t) => acc + t.estimatedWeightKg,
-    0
-  ).toFixed(1);
+  const totalEstimatedKg = trees
+    .reduce((acc, t) => acc + t.estimatedWeightKg, 0)
+    .toFixed(1);
 
   const toggleTask = (id: string) => {
     setTasks((prev) =>
@@ -40,7 +41,49 @@ export default function OrchardDashboardScreen() {
     );
   };
 
-  const currentPopupData = activePopup ? GUIDANCE_POPUPS[activePopup] : null;
+  const getSoilGuidance = (soil: typeof careSetup.soilType) => {
+    if (soil === 'sandy') {
+      return 'Sandy soil drains fast — use shorter, more frequent drip pulses to keep root moisture steady.';
+    }
+    if (soil === 'clay') {
+      return 'Clay soil holds water longer — use slower, deeper soak intervals and watch for root-zone saturation.';
+    }
+    return 'Loam soil holds balanced moisture — follow your standard drip schedule and check 30cm depth.';
+  };
+
+  const currentPopupData = activePopup
+    ? !isSignedIn
+      ? {
+          ...GUIDANCE_POPUPS[activePopup],
+          badge: `DEMO ${GUIDANCE_POPUPS[activePopup].badge}`,
+          subtitle: 'Sample Demo Orchard • Sign in to calibrate to your location',
+        }
+      : activePopup === 'daily'
+        ? {
+            ...GUIDANCE_POPUPS.daily,
+            badge: 'YOUR ORCHARD DAILY',
+            title: `${userProfile.orchardName} Daily Guide`,
+            subtitle: `${careSetup.locationZone} • ${careSetup.soilType.toUpperCase()} soil • ${trees.length} Trees`,
+            cycleHighlight: `Water every ${careSetup.irrigationIntervalDays} days • Target ${careSetup.targetSoilMoisturePct}% root moisture`,
+            actionItems: [
+              getSoilGuidance(careSetup.soilType),
+              `Inspect your ${trees.length} registered tree(s) (${totalEstimatedNuts} est. nuts / ${totalEstimatedKg} kg) for dark hulls or moisture stress.`,
+              `Keep 30cm root zone near ${careSetup.targetSoilMoisturePct}% moisture before your next scheduled drip cycle.`,
+            ],
+          }
+        : {
+            ...GUIDANCE_POPUPS.weekly,
+            badge: 'YOUR ORCHARD WEEKLY',
+            title: `${userProfile.orchardName} Weekly Plan`,
+            subtitle: `${careSetup.locationZone} • Chill Target: ${careSetup.chillHoursTarget} hrs`,
+            cycleHighlight: `Chill Target: ${careSetup.chillHoursTarget} hrs • ${trees.length} Tree(s) Tracked`,
+            actionItems: [
+              `Review weekly moisture trends for your ${careSetup.soilType} soil in ${careSetup.locationZone}.`,
+              `Log any new nut counts or area updates across your ${trees.length} registered tree(s).`,
+              `Confirm irrigation interval (${careSetup.irrigationIntervalDays} days) matches local weather this week.`,
+            ],
+          }
+    : null;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -52,38 +95,60 @@ export default function OrchardDashboardScreen() {
         {/* Top Orchard Header */}
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <View style={styles.badgePill}>
-              <Ionicons name="leaf" size={13} color={Colors.walnutGreen[700]} />
-              <Text style={styles.badgePillText}>
-                WALNUT TREE CARE & AI COUNTER
-              </Text>
-            </View>
-            <Text style={styles.title}>WalnutIQ: Tree Care & AI Count</Text>
+            <Text style={styles.title}>WalnutIQ</Text>
             <Text style={styles.subtitle}>
-              Offline-First + Convex Sync (14d Auto-Purge) • 3 Bearing Trees
+              {isSignedIn
+                ? `${userProfile.orchardName} • ${careSetup.locationZone} • ${trees.length} Trees`
+                : `Demo Orchard • Sign in to unlock menus & your location guide`}
             </Text>
           </View>
           <TouchableOpacity
             style={styles.syncChip}
-            onPress={() => router.push('/(tabs)/analytics')}
+            onPress={() => router.push('/auth')}
           >
             <Ionicons
-              name="hardware-chip-outline"
-              size={16}
-              color={Colors.walnutGreen[700]}
+              name={isSignedIn ? 'person-circle' : 'log-in-outline'}
+              size={18}
+              color={Colors.walnutGreen[800]}
             />
-            <Text style={styles.syncChipText}>Sensors & Sync</Text>
+            <Text style={styles.syncChipText}>
+              {isSignedIn ? 'Account' : 'Sign In'}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Daily & Weekly Guidance Popup Bar */}
+        {/* Demo Mode Banner for Signed-Out Users */}
+        {!isSignedIn && (
+          <TouchableOpacity
+            style={styles.demoBanner}
+            onPress={() => router.push('/auth')}
+          >
+            <Ionicons name="lock-closed" size={16} color="#FFFFFF" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.demoBannerTitle}>
+                DEMO DATA MODE • 4 Bottom Menus Locked
+              </Text>
+              <Text style={styles.demoBannerSub}>
+                Showing sample orchard data. Sign in to unlock Care Plan, Camera
+                AI, Community & Setup and get your location-calibrated guide.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+          </TouchableOpacity>
+        )}
+
+        {/* Daily & Weekly Care Briefing */}
         <View style={styles.popupBar}>
           <View style={{ flex: 1 }}>
             <Text style={styles.popupBarTitle}>
-              Care Guidance & Cycle Popups
+              {isSignedIn
+                ? 'Your Orchard Care Briefing'
+                : 'Demo Orchard Care Briefing'}
             </Text>
             <Text style={styles.popupBarSub}>
-              Watering, feeding & winter care countdown briefings
+              {isSignedIn
+                ? `${careSetup.locationZone} • ${careSetup.soilType.toUpperCase()} soil`
+                : 'Sample watering, feeding & winter countdowns'}
             </Text>
           </View>
           <TouchableOpacity
@@ -91,7 +156,7 @@ export default function OrchardDashboardScreen() {
             onPress={() => setActivePopup('daily')}
           >
             <Ionicons name="sunny" size={14} color="#FFFFFF" />
-            <Text style={styles.popupTriggerText}>Daily Popup</Text>
+            <Text style={styles.popupTriggerText}>Daily</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.popupTriggerBtnSecondary}
@@ -106,17 +171,89 @@ export default function OrchardDashboardScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* TUYA SMART ORCHARD SENSORS FRONT DISPLAY STRIP */}
+        {/* AI Camera & Season Yield Hero Card */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroTopRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.heroEyebrow}>CAMERA AI & SEASON YIELD</Text>
+              <Text style={styles.heroStageTitle}>
+                Post-Harvest & Winter Prep
+              </Text>
+              <Text style={styles.heroDesc}>
+                Count walnuts in the tree canopy or spot fallen nuts hidden under
+                autumn leaves.
+              </Text>
+            </View>
+            <View style={styles.yieldSummaryBox}>
+              <Text style={styles.yieldValue}>{totalEstimatedNuts}</Text>
+              <Text style={styles.yieldLabel}>Est. Nuts</Text>
+              <View style={styles.yieldDivider} />
+              <Text style={styles.yieldKg}>{totalEstimatedKg} kg</Text>
+            </View>
+          </View>
+
+          <View style={styles.heroActionsRow}>
+            <TouchableOpacity
+              style={styles.primaryActionBtn}
+              onPress={() =>
+                router.push(
+                  isSignedIn ? '/(tabs)/scanner?mode=canopy' : '/auth'
+                )
+              }
+            >
+              <Ionicons
+                name={isSignedIn ? 'camera' : 'lock-closed'}
+                size={17}
+                color="#FFFFFF"
+              />
+              <Text style={styles.primaryActionText}>
+                {isSignedIn ? 'Count Tree Nuts' : 'Sign In to Count'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.secondaryActionBtn}
+              onPress={() =>
+                router.push(
+                  isSignedIn ? '/(tabs)/scanner?mode=ground' : '/auth'
+                )
+              }
+            >
+              <Ionicons
+                name={isSignedIn ? 'locate' : 'lock-closed'}
+                size={17}
+                color={Colors.walnutGreen[900]}
+              />
+              <Text style={styles.secondaryActionText}>
+                {isSignedIn ? 'Find Fallen Nuts' : 'Sign In to Pick'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* WALNUTS ORCHARD SENSORS FRONT DISPLAY STRIP */}
         <View style={styles.sectionHeader}>
           <View style={styles.sensorHeaderLeft}>
             <Ionicons name="pulse" size={18} color={Colors.walnutGreen[700]} />
             <Text style={styles.sectionTitle}>
-              Tuya Orchard Sensors (Live Telemetry)
+              {isSignedIn
+                ? 'Walnuts Orchard Sensors (Live Telemetry)'
+                : 'Demo Orchard Sensors (Sample)'}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/analytics')}>
-            <Text style={styles.sectionLink}>Configure Tuya →</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <TouchableOpacity onPress={() => router.push('/shop')}>
+              <Text style={styles.sectionLink}>Shop Sensors →</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() =>
+                router.push(isSignedIn ? '/(tabs)/analytics' : '/auth')
+              }
+            >
+              <Text style={styles.sectionLink}>
+                {isSignedIn ? 'Settings →' : 'Sign In →'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.sensorGrid}>
@@ -124,7 +261,9 @@ export default function OrchardDashboardScreen() {
             <TouchableOpacity
               key={sensor.id}
               style={styles.sensorCard}
-              onPress={() => router.push('/(tabs)/analytics')}
+              onPress={() =>
+                router.push(isSignedIn ? '/(tabs)/analytics' : '/auth')
+              }
             >
               <View style={styles.sensorCardTop}>
                 <View style={styles.sensorIconCircle}>
@@ -149,129 +288,19 @@ export default function OrchardDashboardScreen() {
           ))}
         </View>
 
-        {/* Active Care Cycles & Live Countdowns */}
+        {/* Priority Care Queue */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
-            Active Care Cycles & Countdowns
+            {isSignedIn ? 'Upcoming Care' : 'Demo Upcoming Care'}
           </Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/calendar')}>
-            <Text style={styles.sectionLink}>All Cycles →</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.stageRow}
-        >
-          {CARE_CYCLES_COUNTDOWNS.map((cycle) => (
-            <View key={cycle.id} style={styles.countdownCard}>
-              <View style={styles.countdownTopRow}>
-                <Text style={styles.countdownCategory}>{cycle.title}</Text>
-                <View style={styles.countdownBadge}>
-                  <Ionicons
-                    name="timer-outline"
-                    size={12}
-                    color={Colors.walnutShell[700]}
-                  />
-                  <Text style={styles.countdownBadgeText}>
-                    {cycle.countdownText}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.countdownCycleName}>{cycle.cycleName}</Text>
-              <View style={styles.progressBarTrack}>
-                <View
-                  style={[
-                    styles.progressBarFill,
-                    { width: `${cycle.progressPct}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.countdownNextText}>
-                {cycle.nextActionText}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
-
-        {/* Active Season & YOLO Yield Hero Card */}
-        <View style={styles.heroCard}>
-          <View style={styles.heroTopRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.heroEyebrow}>AI VISION & SEASON STATUS</Text>
-              <Text style={styles.heroStageTitle}>
-                Post-Harvest & Winter Care Prep
-              </Text>
-              <Text style={styles.heroDesc}>
-                Scan trees for canopy yield calibration or use Ground Picker to
-                spot fallen walnuts hidden under autumn leaves.
-              </Text>
-            </View>
-            <View style={styles.yieldSummaryBox}>
-              <Text style={styles.yieldValue}>{totalEstimatedNuts}</Text>
-              <Text style={styles.yieldLabel}>YOLO Est. Nuts</Text>
-              <View style={styles.yieldDivider} />
-              <Text style={styles.yieldKg}>{totalEstimatedKg} kg</Text>
-            </View>
-          </View>
-
-          {/* Dual Quick Camera CTAs */}
-          <View style={styles.heroActionsRow}>
-            <TouchableOpacity
-              style={styles.primaryActionBtn}
-              onPress={() => router.push('/(tabs)/scanner')}
-            >
-              <Ionicons name="camera" size={18} color="#FFFFFF" />
-              <Text style={styles.primaryActionText}>Canopy Nut Counter</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.secondaryActionBtn}
-              onPress={() => router.push('/(tabs)/scanner')}
-            >
-              <Ionicons
-                name="locate"
-                size={18}
-                color={Colors.walnutGreen[900]}
-              />
-              <Text style={styles.secondaryActionText}>Ground Nut Finder</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Annual Lifecycle Progress Strip */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Year-Round Walnut Cycle</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/calendar')}>
-            <Text style={styles.sectionLink}>Full Calendar →</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.stageRow}
-        >
-          {PHENOLOGY_STAGES.map((stage) => (
-            <View
-              key={stage.id}
-              style={[
-                styles.stageCard,
-                stage.active && styles.stageCardActive,
-              ]}
-            >
-              <Text style={styles.stageMonths}>{stage.months}</Text>
-              <Text style={styles.stageName}>{stage.title}</Text>
-              <Text style={styles.stageSummary} numberOfLines={3}>
-                {stage.summary}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
-
-        {/* Priority Care & Notification Queue */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Upcoming Care & Push Alerts</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/calendar')}>
-            <Text style={styles.sectionLink}>Manage Alerts →</Text>
+          <TouchableOpacity
+            onPress={() =>
+              router.push(isSignedIn ? '/(tabs)/calendar' : '/auth')
+            }
+          >
+            <Text style={styles.sectionLink}>
+              {isSignedIn ? 'Full Care Plan →' : 'Unlock Care Plan →'}
+            </Text>
           </TouchableOpacity>
         </View>
         {tasks.map((task) => (
@@ -311,12 +340,27 @@ export default function OrchardDashboardScreen() {
 
         {/* Registered Walnut Trees */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>My Walnut Trees (YOLO Tracked)</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/analytics')}>
-            <Text style={styles.sectionLink}>All Trees →</Text>
+          <Text style={styles.sectionTitle}>
+            {isSignedIn ? 'My Walnut Trees' : 'Demo Walnut Trees'}
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              if (!isSignedIn) {
+                router.push('/auth');
+              } else {
+                addOrchardTree(
+                  `Tree #0${trees.length + 1} • New Orchard Area`,
+                  'Chandler'
+                );
+              }
+            }}
+          >
+            <Text style={styles.sectionLink}>
+              {isSignedIn ? '+ Add Area / Tree' : 'Sign in to Add →'}
+            </Text>
           </TouchableOpacity>
         </View>
-        {INITIAL_TREES.map((tree) => (
+        {trees.map((tree) => (
           <View key={tree.id} style={styles.treeCard}>
             <View style={styles.treeCardHeader}>
               <View>
@@ -438,6 +482,26 @@ export default function OrchardDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
+  demoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: Colors.walnutShell[700],
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+  },
+  demoBannerTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  demoBannerSub: {
+    fontSize: 11,
+    color: '#F5EBE0',
+    marginTop: 2,
+    lineHeight: 15,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: Colors.walnutGreen[50],

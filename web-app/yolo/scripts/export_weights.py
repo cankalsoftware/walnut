@@ -4,11 +4,17 @@ Copies your trained .pt file into the root /weights folder, exports mobile-ready
 TFLite/ONNX formats, and updates /weights/manifest.json for the Expo app.
 """
 
+from __future__ import annotations
+
 import argparse
 import json
+import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
+
+_YOLO_ROOT = Path(__file__).resolve().parent.parent
+os.environ.setdefault("YOLO_CONFIG_DIR", str(_YOLO_ROOT / ".ultralytics"))
 
 
 def main() -> None:
@@ -36,7 +42,8 @@ def main() -> None:
     parser.add_argument("--imgsz", type=int, default=640, help="Inference input resolution")
     args = parser.parse_args()
 
-    repo_root = Path(__file__).resolve().parent.parent.parent
+    yolo_root = Path(__file__).resolve().parent.parent
+    repo_root = yolo_root.parent.parent
     weights_root = repo_root / "weights"
     target_dir = weights_root / args.mode
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -68,13 +75,18 @@ def main() -> None:
         manifest = {"models": {}}
 
     manifest["updatedAt"] = datetime.now(timezone.utc).isoformat()
-    manifest["models"][args.mode] = {
-        "ptFile": f"weights/{args.mode}/{dest_pt.name}",
-        "mobileFile": f"weights/{args.mode}/{exported_mobile_file}",
-        "inputSize": args.imgsz,
-        "ready": True,
-        "updatedAt": manifest["updatedAt"],
-    }
+    existing_entry = manifest.get("models", {}).get(args.mode, {})
+    existing_entry.update(
+        {
+            "ptFile": f"weights/{args.mode}/{dest_pt.name}",
+            "mobileFile": f"weights/{args.mode}/{exported_mobile_file}",
+            "inputSize": args.imgsz,
+            "ready": True,
+            "fallbackSimulation": False,
+            "updatedAt": manifest["updatedAt"],
+        }
+    )
+    manifest.setdefault("models", {})[args.mode] = existing_entry
 
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"[Weights] Updated {manifest_path}")

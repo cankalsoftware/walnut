@@ -1,10 +1,23 @@
 import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/theme/colors';
+import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
 
 export default function TabsLayout() {
+  const router = useRouter();
+  const { isSignedIn } = useWalnutCloud();
+
+  const lockedTabListeners = {
+    tabPress: (e: { preventDefault: () => void }) => {
+      if (!isSignedIn) {
+        e.preventDefault();
+        router.push('/auth');
+      }
+    },
+  };
+
   return (
     <Tabs
       screenOptions={{
@@ -26,44 +39,65 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="calendar"
+        listeners={lockedTabListeners}
         options={{
-          title: 'Care Plan',
+          title: isSignedIn ? 'Care Plan' : 'Care Plan 🔒',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar" size={size} color={color} />
+            <Ionicons
+              name={isSignedIn ? 'calendar' : 'lock-closed'}
+              size={size}
+              color={isSignedIn ? color : Colors.text.muted}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="scanner"
+        listeners={lockedTabListeners}
         options={{
-          title: 'YOLO AI',
+          title: isSignedIn ? 'Camera AI' : 'Camera AI 🔒',
           tabBarIcon: ({ focused }) => (
             <View
               style={[
                 styles.centerScannerBtn,
                 focused && styles.centerScannerBtnActive,
+                !isSignedIn && styles.centerScannerBtnLocked,
               ]}
             >
-              <Ionicons name="scan" size={26} color="#FFFFFF" />
+              <Ionicons
+                name={isSignedIn ? 'camera' : 'lock-closed'}
+                size={24}
+                color="#FFFFFF"
+              />
             </View>
           ),
         }}
       />
       <Tabs.Screen
         name="community"
+        listeners={lockedTabListeners}
         options={{
-          title: 'Grower Chat',
+          title: isSignedIn ? 'Community' : 'Community 🔒',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles" size={size} color={color} />
+            <Ionicons
+              name={isSignedIn ? 'chatbubbles' : 'lock-closed'}
+              size={size}
+              color={isSignedIn ? color : Colors.text.muted}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="analytics"
+        listeners={lockedTabListeners}
         options={{
-          title: 'Analytics',
+          title: isSignedIn ? 'Setup & Data' : 'Setup 🔒',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart" size={size} color={color} />
+            <Ionicons
+              name={isSignedIn ? 'options' : 'lock-closed'}
+              size={size}
+              color={isSignedIn ? color : Colors.text.muted}
+            />
           ),
         }}
       />
@@ -104,6 +138,10 @@ const styles = StyleSheet.create({
   centerScannerBtnActive: {
     backgroundColor: Colors.walnutGreen[700],
     borderColor: Colors.walnutGreen[300],
+  },
+  centerScannerBtnLocked: {
+    backgroundColor: Colors.walnutShell[500],
+    borderColor: Colors.walnutShell[200],
   },
 });
 

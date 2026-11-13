@@ -1,0 +1,31 @@
+{
+  "name": "walnutiq-web-admin-portal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Independent WalnutIQ Web App & Admin ML Studio for walnut.pinarlik.com (Vercel) sharing Clerk & Convex with the Expo Mobile App",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "bg-worker": "python backend/server.py"
+  },
+  "dependencies": {
+    "@clerk/react": "^6.18.7",
+    "convex": "^1.17.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  },
+  "pnpm": {
+    "overrides": {
+      "rollup": "npm:@rollup/wasm-node@^4.24.0"
+    }
+  }
+}

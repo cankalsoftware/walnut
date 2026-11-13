@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/theme/colors';
 import {
@@ -17,11 +18,25 @@ import {
   runFrameDetection,
 } from '../../src/services/yoloService';
 import { INITIAL_TREES } from '../../src/data/walnutLifecycle';
+import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
 
 const QUADRANTS: CanopyQuadrant[] = ['North', 'East', 'South', 'West'];
 
-export default function YoloScannerScreen() {
+export default function CameraAiScreen() {
+  const router = useRouter();
+  const { isSignedIn } = useWalnutCloud();
+  const params = useLocalSearchParams<{ mode?: string }>();
   const [mode, setMode] = useState<ScannerMode>('canopy');
+
+  useEffect(() => {
+    if (
+      params.mode === 'canopy' ||
+      params.mode === 'ground' ||
+      params.mode === 'growth'
+    ) {
+      setMode(params.mode);
+    }
+  }, [params.mode]);
   const [selectedTreeIndex, setSelectedTreeIndex] = useState(0);
   const [frameSeed, setFrameSeed] = useState(1);
   const [activeQuadrant, setActiveQuadrant] = useState<CanopyQuadrant>('North');
@@ -45,6 +60,10 @@ export default function YoloScannerScreen() {
   );
 
   const handleCaptureFrame = () => {
+    if (!isSignedIn) {
+      router.push('/auth');
+      return;
+    }
     setFrameSeed((prev) => prev + 1);
     if (mode === 'canopy') {
       const simulatedCount = 55 + ((frameSeed * 7) % 22);
@@ -124,16 +143,18 @@ export default function YoloScannerScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Active Weight File Status Strip */}
+        {/* Active Camera Mode Status Strip */}
         <View style={styles.weightStrip}>
-          <Ionicons name="hardware-chip" size={15} color={Colors.walnutGreen[200]} />
+          <Ionicons name="sparkles" size={15} color={Colors.walnutGreen[200]} />
           <Text style={styles.weightStripText}>
             {mode === 'ground'
-              ? `Weight: ${weightsStatus.groundModel.ptFile}`
-              : `Weight: ${weightsStatus.canopyModel.ptFile}`}
+              ? 'Ground Harvest Finder • Fallen Nut Detection'
+              : mode === 'growth'
+              ? 'Nut Sizing & Husk Health Check'
+              : 'Canopy Yield Counter • 4-Quadrant Estimator'}
           </Text>
           <View style={styles.simBadge}>
-            <Text style={styles.simBadgeText}>YOLO HUD READY</Text>
+            <Text style={styles.simBadgeText}>CAMERA AI</Text>
           </View>
         </View>
 
@@ -264,12 +285,12 @@ export default function YoloScannerScreen() {
         ) : mode === 'ground' ? (
           <View style={styles.controlCard}>
             <Text style={styles.controlTitle}>
-              Post-Harvest Ground Nut Finder (Option 2)
+              Post-Harvest Ground Nut Finder
             </Text>
             <Text style={styles.groundDesc}>
               Highlights fallen walnuts camouflaged among brown leaves, hulls,
-              and grass using high-visibility neon lime (#CCFF00) bounding boxes
-              so nothing is left behind after shaking.
+              and grass with bright visual outlines so nothing is left behind
+              after shaking.
             </Text>
             <View style={styles.groundLegendRow}>
               <View style={styles.legendItem}>

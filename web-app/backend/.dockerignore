@@ -1,0 +1,15 @@
+node_modules/
+web-app/node_modules/
+.git/
+.expo/
+app/
+src/
+__pycache__/
+*.pyc
+web-app/yolo/datasets/
+web-app/yolo/runs/
+web-app/yolo/dataset_builder/raw_scraped/
+web-app/yolo/dataset_builder/curated/
+web-app/yolo/dataset_builder/rejected_by_clip/
+*.pt
+

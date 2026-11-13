@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+web-app/node_modules/
+
+# Expo (Mobile App)
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Web App (walnut.pinarlik.com Vercel build)
+web-app/dist/
+web-app/.vercel/
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+web-app/.env
+web-app/.env.local
+web-app/.env.*.local
+
+# Internal licenses & research paper PDFs (for internal reference only, not publication)
+.licenses/
+.licences/
+research/papers/
+
+# Native mobile build outputs
+android/
+ios/
+*.apk
+*.aab
+*.ipa
+
+# Background Web App YOLO raw datasets & training artifacts (keep exported mobile weights in /weights)
+web-app/yolo/datasets/
+web-app/yolo/runs/
+web-app/yolo/.ultralytics/
+web-app/yolo/dataset_builder/raw_scraped/
+web-app/yolo/dataset_builder/curated/
+web-app/yolo/dataset_builder/rejected_by_clip/
+web-app/yolo/dataset_builder/walnutdata_hf_raw/
+*.pt
+
+# Python cache & OS files
+__pycache__/
+*.pyc
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+Thumbs.db

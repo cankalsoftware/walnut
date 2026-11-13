@@ -7,8 +7,10 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Switch,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Colors } from '../../src/theme/colors';
 import {
   GROWTH_CURVE_SERIES,
@@ -16,18 +18,70 @@ import {
   TUYA_SENSOR_NODES,
   TuyaSensorNode,
 } from '../../src/data/walnutLifecycle';
-import {
-  INITIAL_LOCAL_CACHE,
-  LOCAL_RETENTION_DAYS,
-  LocalCachedRecord,
-  purgeExpiredSyncedCache,
-} from '../../src/services/offlineSyncService';
+import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
 
-export default function AnalyticsAndSyncScreen() {
+export default function OrchardSetupAndAnalyticsScreen() {
+  const router = useRouter();
+  const { isSignedIn, careSetup, updateCareSetup, resetCareSetupToDefaults } =
+    useWalnutCloud();
   const [sensors, setSensors] = useState<TuyaSensorNode[]>(TUYA_SENSOR_NODES);
-  const [localCache, setLocalCache] =
-    useState<LocalCachedRecord[]>(INITIAL_LOCAL_CACHE);
-  const [lastPurgeSummary, setLastPurgeSummary] = useState<string | null>(null);
+
+  if (!isSignedIn) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 24,
+          }}
+        >
+          <Ionicons
+            name="lock-closed"
+            size={40}
+            color={Colors.walnutGreen[700]}
+          />
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: '800',
+              color: Colors.walnutGreen[900],
+              marginTop: 12,
+              textAlign: 'center',
+            }}
+          >
+            Sign In Required for Sensors & Setup
+          </Text>
+          <Text
+            style={{
+              fontSize: 13,
+              color: Colors.text.secondary,
+              marginTop: 6,
+              marginBottom: 18,
+              textAlign: 'center',
+            }}
+          >
+            Sign in to configure your orchard soil, location zone, and live
+            sensor settings.
+          </Text>
+          <TouchableOpacity
+            style={{
+              backgroundColor: Colors.walnutGreen[700],
+              paddingHorizontal: 20,
+              paddingVertical: 12,
+              borderRadius: 12,
+            }}
+            onPress={() => router.push('/auth')}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>
+              Sign In to Unlock
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const toggleSensorDisplay = (id: string) => {
     setSensors((prev) =>
@@ -39,14 +93,6 @@ export default function AnalyticsAndSyncScreen() {
     );
   };
 
-  const handleRunAutoPurge = () => {
-    const result = purgeExpiredSyncedCache(localCache);
-    setLocalCache(result.retained);
-    setLastPurgeSummary(
-      `Purged ${result.purgedCount} synced records older than ${LOCAL_RETENTION_DAYS} days (${result.freedMb} MB freed). Unsynced field data kept safe.`
-    );
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -54,84 +100,117 @@ export default function AnalyticsAndSyncScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Analytics, Tuya Sensors & Cloud Sync</Text>
+        <Text style={styles.title}>Orchard Setup & Analytics</Text>
         <Text style={styles.subtitle}>
-          WalnutIQ: Tree Care & AI Count • Hybrid Convex Sync & Sensor Settings
+          Customize care parameters for your soil & location, manage sensors, and
+          track nut sizing
         </Text>
 
-        {/* Hybrid Architecture + 14-Day Auto-Purge Engine Card */}
+        {/* Soil & Location Care Setup (Admin Defaults + Grower Overrides) */}
         <View style={styles.syncCard}>
           <View style={styles.syncHeader}>
             <Ionicons
-              name="cloud-done"
-              size={22}
+              name="leaf"
+              size={20}
               color={Colors.walnutGreen[800]}
             />
             <Text style={styles.syncTitle}>
-              Hybrid Offline + Convex Sync ({LOCAL_RETENTION_DAYS}-Day Auto-Purge)
+              Soil & Location Care Parameters
             </Text>
           </View>
           <Text style={styles.syncDesc}>
-            • Field Mode: Captures YOLO scans & care logs offline when cell signal drops.{'\n'}
-            • Cloud Sync: Auto-syncs to Convex + Clerk (Google & Email) for Web App & Chat.{'\n'}
-            • Storage Rule: Synced local cache older than {LOCAL_RETENTION_DAYS} days is automatically purged to save phone space.
+            {careSetup.isCustomizedByUser
+              ? 'Using your custom orchard overrides below.'
+              : 'Using optimal default walnut care values. Tap any setting to customize for your soil and region.'}
           </Text>
 
-          <View style={styles.cacheListBox}>
-            {localCache.map((rec) => (
-              <View key={rec.id} style={styles.cacheRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cacheTitle}>{rec.title}</Text>
-                  <Text style={styles.cacheMeta}>
-                    {(rec.sizeKb / 1024).toFixed(2)} MB •{' '}
-                    {rec.syncStatus === 'SYNCED'
-                      ? 'Synced to Convex'
-                      : 'Pending Upload (Offline Safe)'}
-                  </Text>
-                </View>
-                <View
+          <Text style={styles.overrideLabel}>Orchard Soil Type</Text>
+          <View style={styles.soilRow}>
+            {(['loam', 'clay', 'sandy'] as const).map((soil) => {
+              const active = careSetup.soilType === soil;
+              const defaultInterval =
+                soil === 'sandy' ? 5 : soil === 'clay' ? 10 : 7;
+              return (
+                <TouchableOpacity
+                  key={soil}
                   style={[
-                    styles.statusBadge,
-                    rec.syncStatus === 'PENDING_UPLOAD' &&
-                      styles.statusBadgePending,
+                    styles.soilChip,
+                    active && styles.soilChipActive,
                   ]}
+                  onPress={() =>
+                    updateCareSetup({
+                      soilType: soil,
+                      irrigationIntervalDays: defaultInterval,
+                    })
+                  }
                 >
-                  <Text style={styles.statusBadgeText}>
-                    {rec.syncStatus === 'SYNCED' ? 'SYNCED' : 'OFFLINE'}
+                  <Text
+                    style={[
+                      styles.soilChipText,
+                      active && styles.soilChipTextActive,
+                    ]}
+                  >
+                    {soil.charAt(0).toUpperCase() + soil.slice(1)}
                   </Text>
-                </View>
-              </View>
-            ))}
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          {lastPurgeSummary && (
-            <Text style={styles.purgeNotice}>{lastPurgeSummary}</Text>
-          )}
+          <Text style={styles.overrideLabel}>Location / Climate Zone</Text>
+          <TextInput
+            style={styles.overrideInput}
+            value={careSetup.locationZone}
+            onChangeText={(text) => updateCareSetup({ locationZone: text })}
+            placeholder="e.g. Zone 8b • Temperate Orchard"
+            placeholderTextColor={Colors.text.muted}
+          />
 
-          <TouchableOpacity
-            style={styles.purgeBtn}
-            onPress={handleRunAutoPurge}
-          >
-            <Ionicons name="trash-bin-outline" size={16} color="#FFFFFF" />
-            <Text style={styles.purgeBtnText}>
-              Run {LOCAL_RETENTION_DAYS}-Day Post-Sync Local Cleanup Now
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.overrideMetricsRow}>
+            <View style={styles.overrideMetricBox}>
+              <Text style={styles.overrideMetricVal}>
+                Every {careSetup.irrigationIntervalDays}d
+              </Text>
+              <Text style={styles.overrideMetricLbl}>Watering Cycle</Text>
+            </View>
+            <View style={styles.overrideMetricBox}>
+              <Text style={styles.overrideMetricVal}>
+                {careSetup.targetSoilMoisturePct}%
+              </Text>
+              <Text style={styles.overrideMetricLbl}>Target Moisture</Text>
+            </View>
+            <View style={styles.overrideMetricBox}>
+              <Text style={styles.overrideMetricVal}>
+                {careSetup.chillHoursTarget} hrs
+              </Text>
+              <Text style={styles.overrideMetricLbl}>Chill Target</Text>
+            </View>
+          </View>
+
+          {careSetup.isCustomizedByUser && (
+            <TouchableOpacity
+              style={styles.purgeBtn}
+              onPress={resetCareSetupToDefaults}
+            >
+              <Ionicons name="refresh" size={16} color="#FFFFFF" />
+              <Text style={styles.purgeBtnText}>
+                Reset to Optimal Orchard Defaults
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Tuya Smart Orchard Sensor Plugin Menu */}
+        {/* Walnuts Orchard Sensors Menu */}
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
-            <View>
-              <Text style={styles.cardTitle}>
-                Tuya Smart Orchard Sensor Plugin
-              </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>Walnuts Orchard Sensors</Text>
               <Text style={styles.cardSub}>
-                Choose which Tuya sensors appear on the front Orchard display
+                Choose which live sensors appear on your Orchard screen
               </Text>
             </View>
             <View style={styles.pluginTag}>
-              <Text style={styles.pluginTagText}>TUYA READY</Text>
+              <Text style={styles.pluginTagText}>CONNECTED</Text>
             </View>
           </View>
 
@@ -162,6 +241,26 @@ export default function AnalyticsAndSyncScreen() {
               />
             </View>
           ))}
+
+          <TouchableOpacity
+            style={{
+              marginTop: 10,
+              backgroundColor: Colors.walnutGreen[700],
+              borderRadius: 10,
+              paddingVertical: 11,
+              paddingHorizontal: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+            }}
+            onPress={() => router.push('/shop')}
+          >
+            <Ionicons name="cart-outline" size={16} color="#FFFFFF" />
+            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>
+              Buy Compatible Sensors & Switches →
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Nut Diameter Growth Progression Chart */}
@@ -170,7 +269,7 @@ export default function AnalyticsAndSyncScreen() {
             Seasonal Walnut Sizing Curve (May – Oct)
           </Text>
           <Text style={styles.cardSub}>
-            Compares YOLO visual diameter (mm) against target Chandler variety curve
+            Compares measured nut diameter (mm) against target Chandler variety curve
           </Text>
 
           <View style={styles.barsContainer}>
@@ -197,7 +296,7 @@ export default function AnalyticsAndSyncScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.treeName}>{t.name}</Text>
                 <Text style={styles.treeSub}>
-                  {t.variety} • Tuya Soil Moisture {t.soilMoisturePct}%
+                  {t.variety} • Soil Moisture {t.soilMoisturePct}%
                 </Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
@@ -263,6 +362,74 @@ const styles = StyleSheet.create({
     color: Colors.walnutGreen[900],
     lineHeight: 18,
     marginBottom: 10,
+  },
+  overrideLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.walnutGreen[900],
+    marginBottom: 5,
+  },
+  soilRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  soilChip: {
+    flex: 1,
+    backgroundColor: Colors.surface.card,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.walnutGreen[300],
+  },
+  soilChipActive: {
+    backgroundColor: Colors.walnutGreen[700],
+    borderColor: Colors.walnutGreen[800],
+  },
+  soilChipText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.walnutGreen[900],
+  },
+  soilChipTextActive: {
+    color: '#FFFFFF',
+  },
+  overrideInput: {
+    backgroundColor: Colors.surface.card,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.walnutGreen[300],
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 12,
+    color: Colors.walnutGreen[900],
+    marginBottom: 10,
+  },
+  overrideMetricsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  overrideMetricBox: {
+    flex: 1,
+    backgroundColor: Colors.surface.card,
+    borderRadius: 10,
+    padding: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.walnutGreen[200],
+  },
+  overrideMetricVal: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: Colors.walnutGreen[900],
+  },
+  overrideMetricLbl: {
+    fontSize: 10,
+    color: Colors.text.secondary,
+    marginTop: 2,
+    fontWeight: '600',
   },
   cacheListBox: {
     backgroundColor: Colors.surface.card,

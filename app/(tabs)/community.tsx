@@ -9,6 +9,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Colors } from '../../src/theme/colors';
 import {
   COMMUNITY_CHANNELS,
@@ -16,9 +17,12 @@ import {
   INITIAL_CHAT_MESSAGES,
   INITIAL_TREES,
 } from '../../src/data/walnutLifecycle';
+import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
 
 export default function CommunityChatScreen() {
-  const [selectedChannel, setSelectedChannel] = useState('yolo-yield-estimates');
+  const router = useRouter();
+  const { isSignedIn } = useWalnutCloud();
+  const [selectedChannel, setSelectedChannel] = useState('yield-counts');
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [attachScanCard, setAttachScanCard] = useState(false);
@@ -28,19 +32,23 @@ export default function CommunityChatScreen() {
   );
 
   const handleSendMessage = () => {
+    if (!isSignedIn) {
+      router.push('/auth');
+      return;
+    }
     if (!inputText.trim() && !attachScanCard) return;
 
     const sampleTree = INITIAL_TREES[0];
     const newMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       channelId: selectedChannel,
-      senderName: 'You (WalnutIQ Grower)',
+      senderName: 'You (Orchard Grower)',
       senderRole: 'Orchard Owner',
-      senderRegion: 'Synced via Convex',
+      senderRegion: 'Verified Grower',
       timestamp: 'Just now',
       text:
         inputText.trim() ||
-        'Sharing my latest YOLO tree scan and care metrics with the group:',
+        'Sharing my latest tree count and care metrics with the group:',
       isOwn: true,
       sharedCard: attachScanCard
         ? {
@@ -68,9 +76,9 @@ export default function CommunityChatScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Grower Community & Chat</Text>
+            <Text style={styles.title}>Grower Community</Text>
             <Text style={styles.subtitle}>
-              Powered by Convex Real-Time + Clerk Auth (Mobile & Web Shared)
+              Connect with walnut growers & share tree yield cards
             </Text>
           </View>
         </View>
@@ -148,7 +156,7 @@ export default function CommunityChatScreen() {
                       <Text style={styles.sharedMetricVal}>
                         {msg.sharedCard.detectedInFrame}
                       </Text>
-                      <Text style={styles.sharedMetricLbl}>YOLO Count</Text>
+                      <Text style={styles.sharedMetricLbl}>AI Count</Text>
                     </View>
                     <View style={styles.sharedMetricBox}>
                       <Text style={styles.sharedMetricVal}>
@@ -187,7 +195,7 @@ export default function CommunityChatScreen() {
               color={Colors.walnutGreen[700]}
             />
             <Text style={styles.attachmentPreviewText}>
-              Attaching Tree #01 YOLO Yield & Care Card to message
+              Attaching Tree #01 Yield & Care Card to message
             </Text>
             <TouchableOpacity onPress={() => setAttachScanCard(false)}>
               <Ionicons name="close-circle" size={18} color={Colors.text.muted} />
@@ -212,7 +220,7 @@ export default function CommunityChatScreen() {
           </TouchableOpacity>
           <TextInput
             style={styles.input}
-            placeholder="Share walnut experience, pruning tip, or YOLO count..."
+            placeholder="Share walnut experience, pruning tip, or tree count..."
             placeholderTextColor={Colors.text.muted}
             value={inputText}
             onChangeText={setInputText}
