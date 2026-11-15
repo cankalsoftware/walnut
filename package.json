@@ -10,11 +10,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@clerk/clerk-expo": "^2.2.0",
+    "@clerk/expo": "^4.16.1",
     "@expo/metro-runtime": "~57.0.18",
     "@expo/vector-icons": "^15.0.2",
     "convex": "^1.17.0",
     "expo": "57.0.33",
+    "expo-auth-session": "~57.0.17",
     "expo-camera": "~57.0.6",
     "expo-constants": "~57.0.24",
     "expo-linking": "~57.0.14",
@@ -23,6 +24,7 @@
     "expo-secure-store": "~57.0.4",
     "expo-sqlite": "~57.0.5",
     "expo-status-bar": "~57.0.1",
+    "expo-web-browser": "~57.0.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",

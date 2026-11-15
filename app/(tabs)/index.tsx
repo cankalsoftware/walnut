@@ -394,6 +394,31 @@ export default function OrchardDashboardScreen() {
             </View>
           </View>
         ))}
+
+        {/* Legal & Google Play Safety Footer */}
+        <TouchableOpacity
+          style={{
+            marginTop: 8,
+            marginBottom: 12,
+            paddingVertical: 12,
+            borderRadius: 12,
+            backgroundColor: Colors.surface.card,
+            borderWidth: 1,
+            borderColor: Colors.walnutGreen[200],
+            alignItems: 'center',
+          }}
+          onPress={() => router.push('/legal')}
+        >
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: '700',
+              color: Colors.walnutGreen[800],
+            }}
+          >
+            Privacy Policy • Cookie Policy • Terms & Data Safety →
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Daily & Weekly Care Guidance Popup Modal */}

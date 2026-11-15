@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   TextInput,
   SafeAreaView,
+  Alert,
+  Share,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,16 +20,56 @@ export default function GrowerAccountScreen() {
   const {
     isSignedIn,
     userProfile,
+    trees,
+    careSetup,
+    localCache,
     pendingUploadCount,
     lastSyncMessage,
     signInWithGoogle,
     signInWithEmail,
     signOutToOfflineMode,
+    deleteAccountAndData,
     syncPendingToConvex,
   } = useWalnutCloud();
 
-  const [emailInput, setEmailInput] = useState('grower@walnutiq.app');
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
   const [nameInput, setNameInput] = useState('Walnut Orchard Owner');
+
+  const handleExportData = async () => {
+    const payload = JSON.stringify(
+      {
+        exportedAt: new Date().toISOString(),
+        userProfile,
+        careSetup,
+        trees,
+        localCache,
+      },
+      null,
+      2
+    );
+    await Share.share({
+      title: 'WalnutIQ Orchard Data Export (JSON)',
+      message: payload,
+    });
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account & Data',
+      'This will permanently delete your WalnutIQ account, synced orchard records, and local offline cache. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: () => {
+            void deleteAccountAndData();
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -118,50 +160,69 @@ export default function GrowerAccountScreen() {
           </View>
         )}
 
-        {/* Option 1: Google Sign-In */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Quick Sign-In</Text>
-          <Text style={styles.sectionDesc}>
-            Sign in with your Google account to keep your orchard trees and
-            harvest records backed up automatically.
-          </Text>
-          <TouchableOpacity style={styles.googleBtn} onPress={signInWithGoogle}>
-            <Ionicons name="logo-google" size={18} color="#FFFFFF" />
-            <Text style={styles.googleBtnText}>Continue with Google</Text>
-          </TouchableOpacity>
-        </View>
+        {!isSignedIn && (
+          <>
+            {/* Option 1: Google Sign-In */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Quick Sign-In</Text>
+              <Text style={styles.sectionDesc}>
+                Sign in with your Google account to keep your orchard trees and
+                harvest records backed up automatically.
+              </Text>
+              <TouchableOpacity
+                style={styles.googleBtn}
+                onPress={signInWithGoogle}
+              >
+                <Ionicons name="logo-google" size={18} color="#FFFFFF" />
+                <Text style={styles.googleBtnText}>Continue with Google</Text>
+              </TouchableOpacity>
+            </View>
 
-        {/* Option 2: Email Sign-In */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Sign In with Email</Text>
-          <Text style={styles.inputLabel}>Orchard / Grower Name</Text>
-          <TextInput
-            style={styles.input}
-            value={nameInput}
-            onChangeText={setNameInput}
-            placeholder="e.g. Valley Walnut Farms"
-            placeholderTextColor={Colors.text.muted}
-          />
+            {/* Option 2: Email Sign-In */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Sign In with Email</Text>
+              <Text style={styles.inputLabel}>Orchard / Grower Name</Text>
+              <TextInput
+                style={styles.input}
+                value={nameInput}
+                onChangeText={setNameInput}
+                placeholder="e.g. Valley Walnut Farms"
+                placeholderTextColor={Colors.text.muted}
+              />
 
-          <Text style={styles.inputLabel}>Email Address</Text>
-          <TextInput
-            style={styles.input}
-            value={emailInput}
-            onChangeText={setEmailInput}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholder="grower@walnutiq.app"
-            placeholderTextColor={Colors.text.muted}
-          />
+              <Text style={styles.inputLabel}>Email Address</Text>
+              <TextInput
+                style={styles.input}
+                value={emailInput}
+                onChangeText={setEmailInput}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholder="you@example.com"
+                placeholderTextColor={Colors.text.muted}
+              />
 
-          <TouchableOpacity
-            style={styles.emailBtn}
-            onPress={() => signInWithEmail(emailInput, nameInput)}
-          >
-            <Ionicons name="mail-outline" size={18} color="#FFFFFF" />
-            <Text style={styles.emailBtnText}>Sign In with Email</Text>
-          </TouchableOpacity>
-        </View>
+              <Text style={styles.inputLabel}>Password</Text>
+              <TextInput
+                style={styles.input}
+                value={passwordInput}
+                onChangeText={setPasswordInput}
+                secureTextEntry
+                placeholder="Your account password"
+                placeholderTextColor={Colors.text.muted}
+              />
+
+              <TouchableOpacity
+                style={styles.emailBtn}
+                onPress={() =>
+                  void signInWithEmail(emailInput, passwordInput, nameInput)
+                }
+              >
+                <Ionicons name="mail-outline" size={18} color="#FFFFFF" />
+                <Text style={styles.emailBtnText}>Sign In with Email</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
         {/* Orchard Backup Controls */}
         <View style={styles.sectionCard}>
@@ -173,7 +234,7 @@ export default function GrowerAccountScreen() {
 
           <TouchableOpacity
             style={styles.syncActionBtn}
-            onPress={syncPendingToConvex}
+            onPress={() => void syncPendingToConvex()}
           >
             <Ionicons name="cloud-upload" size={16} color="#FFFFFF" />
             <Text style={styles.syncActionBtnText}>
@@ -181,22 +242,81 @@ export default function GrowerAccountScreen() {
             </Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={[styles.offlineToggleBtn, { marginTop: 10 }]}
+            onPress={() => void handleExportData()}
+          >
+            <Ionicons
+              name="download-outline"
+              size={16}
+              color={Colors.walnutGreen[800]}
+            />
+            <Text style={styles.offlineToggleText}>
+              Export My Orchard Data (GDPR JSON)
+            </Text>
+          </TouchableOpacity>
+
           {isSignedIn && (
-            <TouchableOpacity
-              style={styles.offlineToggleBtn}
-              onPress={signOutToOfflineMode}
-            >
-              <Ionicons
-                name="airplane-outline"
-                size={16}
-                color={Colors.walnutShell[700]}
-              />
-              <Text style={styles.offlineToggleText}>
-                Switch to Offline Field Mode
-              </Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                style={styles.offlineToggleBtn}
+                onPress={() => void signOutToOfflineMode()}
+              >
+                <Ionicons
+                  name="airplane-outline"
+                  size={16}
+                  color={Colors.walnutShell[700]}
+                />
+                <Text style={styles.offlineToggleText}>
+                  Log Out (Lock Orchard Menus)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  marginTop: 10,
+                  borderRadius: 10,
+                  paddingVertical: 11,
+                  paddingHorizontal: 14,
+                  backgroundColor: '#FDECEC',
+                  borderWidth: 1,
+                  borderColor: '#F5C2C7',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+                onPress={handleDeleteAccount}
+              >
+                <Ionicons name="trash-outline" size={16} color="#9B1C1C" />
+                <Text
+                  style={{ color: '#9B1C1C', fontSize: 12, fontWeight: '800' }}
+                >
+                  Delete Account & Data
+                </Text>
+              </TouchableOpacity>
+            </>
           )}
         </View>
+
+        <TouchableOpacity
+          style={{
+            marginTop: 4,
+            alignItems: 'center',
+            paddingVertical: 10,
+          }}
+          onPress={() => router.push('/legal')}
+        >
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: '700',
+              color: Colors.walnutGreen[800],
+            }}
+          >
+            Privacy Policy • Cookie Policy • Terms & Data Safety →
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );

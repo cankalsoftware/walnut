@@ -2,9 +2,19 @@ import React, { useEffect, useState } from 'react';
 import {
   Show,
   SignInButton,
+  SignOutButton,
   UserButton,
+  useUser,
 } from '@clerk/react';
+import { useMutation } from 'convex/react';
+import { anyApi } from 'convex/server';
 import ShopAdminTab from './components/ShopAdminTab';
+import LegalPages, {
+  LegalRoute,
+  detectLegalRoute,
+} from './components/LegalPages';
+
+const ADMIN_EMAIL = 'pinarlik99@gmail.com';
 
 type AdminTab = 'setup' | 'training' | 'analytics' | 'endpoints' | 'shop';
 
@@ -59,6 +69,48 @@ export default function App({
   hasClerk: boolean;
   hasConvex: boolean;
 }) {
+  const [legalRoute, setLegalRoute] = useState<LegalRoute | null>(() =>
+    detectLegalRoute(window.location.pathname, window.location.search)
+  );
+
+  const navigateLegal = (next: LegalRoute | null) => {
+    setLegalRoute(next);
+    const targetUrl = next ? `/${next}` : '/';
+    window.history.pushState({}, '', targetUrl);
+  };
+
+  useEffect(() => {
+    const onPopState = () => {
+      setLegalRoute(
+        detectLegalRoute(window.location.pathname, window.location.search)
+      );
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  if (legalRoute) {
+    return <LegalPages route={legalRoute} onNavigate={navigateLegal} />;
+  }
+
+  return (
+    <AdminPortalApp
+      hasClerk={hasClerk}
+      hasConvex={hasConvex}
+      navigateLegal={navigateLegal}
+    />
+  );
+}
+
+function AdminPortalApp({
+  hasClerk,
+  hasConvex,
+  navigateLegal,
+}: {
+  hasClerk: boolean;
+  hasConvex: boolean;
+  navigateLegal: (next: LegalRoute | null) => void;
+}) {
   const [activeTab, setActiveTab] = useState<AdminTab>('setup');
 
   // Configurable VPS / Worker Endpoints (persisted in localStorage so no redeploy is needed)
@@ -93,9 +145,7 @@ export default function App({
     'ground'
   );
   const [maxPerQuery, setMaxPerQuery] = useState<number>(40);
-  const [walnutDataPath, setWalnutDataPath] = useState<string>(
-    'C:/Users/uyko7/Downloads/WalnutData'
-  );
+  const [walnutDataPath, setWalnutDataPath] = useState<string>('./WalnutData');
   const [trainTarget, setTrainTarget] = useState<'vps' | 'colab'>('vps');
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -699,30 +749,211 @@ export default function App({
           styles={styles}
         />
       )}
+
+      <footer
+        style={{
+          marginTop: 28,
+          paddingTop: 14,
+          borderTop: '1px solid #d5e5cc',
+          display: 'flex',
+          gap: 14,
+          flexWrap: 'wrap',
+          fontSize: 12,
+          color: '#4d5d47',
+        }}
+      >
+        <button
+          style={{ ...styles.secondaryBtn, padding: '4px 10px', fontSize: 12 }}
+          onClick={() => navigateLegal('privacy')}
+        >
+          Privacy Policy
+        </button>
+        <button
+          style={{ ...styles.secondaryBtn, padding: '4px 10px', fontSize: 12 }}
+          onClick={() => navigateLegal('cookies')}
+        >
+          Cookie Policy
+        </button>
+        <button
+          style={{ ...styles.secondaryBtn, padding: '4px 10px', fontSize: 12 }}
+          onClick={() => navigateLegal('terms')}
+        >
+          Terms & Conditions
+        </button>
+        <button
+          style={{ ...styles.secondaryBtn, padding: '4px 10px', fontSize: 12 }}
+          onClick={() => navigateLegal('account-deletion')}
+        >
+          Account Deletion
+        </button>
+      </footer>
     </div>
   );
 
   if (!hasClerk) {
+    if (import.meta.env.PROD) {
+      return (
+        <div style={styles.authGate}>
+          <div style={styles.authCard}>
+            <h1 style={styles.title}>Authentication Not Configured</h1>
+            <p style={styles.subtitle}>
+              Clerk authentication is required in production. Set{' '}
+              <code>VITE_CLERK_PUBLISHABLE_KEY</code> to enable admin access.
+            </p>
+          </div>
+        </div>
+      );
+    }
     return renderAdminWorkspace();
   }
 
   return (
     <>
-      <Show when="signed-in">{renderAdminWorkspace()}</Show>
+      <Show when="signed-in">
+        <AdminRoleGate
+          hasConvex={hasConvex}
+          authCardStyle={styles.authCard}
+          authGateStyle={styles.authGate}
+          titleStyle={styles.title}
+          subtitleStyle={styles.subtitle}
+          primaryBtnStyle={styles.primaryBtn}
+        >
+          {renderAdminWorkspace()}
+        </AdminRoleGate>
+      </Show>
       <Show when="signed-out">
         <div style={styles.authGate}>
           <div style={styles.authCard}>
             <h1 style={styles.title}>WalnutIQ Admin Portal</h1>
             <p style={styles.subtitle}>
-              Sign in to manage mobile app care defaults, orchard analytics, and
-              dataset training.
+              Authorized administrator access only. Sign in to manage mobile app
+              care defaults, orchard analytics, and dataset training.
             </p>
             <SignInButton mode="modal">
               <button style={styles.primaryBtn}>Sign In to Admin Portal</button>
             </SignInButton>
+            <div
+              style={{
+                marginTop: 18,
+                display: 'flex',
+                justifyContent: 'center',
+                gap: 10,
+                flexWrap: 'wrap',
+              }}
+            >
+              <button
+                style={{ ...styles.secondaryBtn, fontSize: 11, padding: '4px 8px' }}
+                onClick={() => navigateLegal('privacy')}
+              >
+                Privacy Policy
+              </button>
+              <button
+                style={{ ...styles.secondaryBtn, fontSize: 11, padding: '4px 8px' }}
+                onClick={() => navigateLegal('cookies')}
+              >
+                Cookies
+              </button>
+              <button
+                style={{ ...styles.secondaryBtn, fontSize: 11, padding: '4px 8px' }}
+                onClick={() => navigateLegal('terms')}
+              >
+                Terms
+              </button>
+              <button
+                style={{ ...styles.secondaryBtn, fontSize: 11, padding: '4px 8px' }}
+                onClick={() => navigateLegal('account-deletion')}
+              >
+                Data Deletion
+              </button>
+            </div>
           </div>
         </div>
       </Show>
+    </>
+  );
+}
+
+function ConvexSyncAdminRole({
+  displayName,
+}: {
+  displayName: string;
+}) {
+  const syncUser = useMutation(anyApi.users.syncCurrentUser);
+  useEffect(() => {
+    syncUser({
+      displayName,
+      authProvider: 'google',
+    }).catch((err) => {
+      console.warn('Admin role sync failed:', err);
+    });
+  }, [displayName, syncUser]);
+  return null;
+}
+
+function AdminRoleGate({
+  hasConvex,
+  children,
+  authGateStyle,
+  authCardStyle,
+  titleStyle,
+  subtitleStyle,
+  primaryBtnStyle,
+}: {
+  hasConvex: boolean;
+  children: React.ReactNode;
+  authGateStyle: React.CSSProperties;
+  authCardStyle: React.CSSProperties;
+  titleStyle: React.CSSProperties;
+  subtitleStyle: React.CSSProperties;
+  primaryBtnStyle: React.CSSProperties;
+}) {
+  const { isLoaded, user } = useUser();
+
+  if (!isLoaded) {
+    return (
+      <div style={authGateStyle}>
+        <div style={authCardStyle}>
+          <p style={subtitleStyle}>Verifying admin permissions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const email = (user?.primaryEmailAddress?.emailAddress || '')
+    .trim()
+    .toLowerCase();
+  const isAdmin = email === ADMIN_EMAIL;
+
+  if (!isAdmin) {
+    return (
+      <div style={authGateStyle}>
+        <div style={authCardStyle}>
+          {hasConvex && user && (
+            <ConvexSyncAdminRole
+              displayName={user.fullName || email || 'Grower'}
+            />
+          )}
+          <h1 style={titleStyle}>Admin Access Restricted</h1>
+          <p style={subtitleStyle}>
+            Signed in as <strong>{email || 'Unknown user'}</strong>. This
+            account does not have administrator permissions for this portal.
+          </p>
+          <SignOutButton>
+            <button style={primaryBtnStyle}>Sign Out</button>
+          </SignOutButton>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {hasConvex && user && (
+        <ConvexSyncAdminRole
+          displayName={user.fullName || 'WalnutIQ Admin'}
+        />
+      )}
+      {children}
     </>
   );
 }

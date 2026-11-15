@@ -15,11 +15,14 @@ export default defineSchema({
     clerkId: v.string(),
     email: v.string(),
     displayName: v.string(),
+    role: v.optional(v.union(v.literal('admin'), v.literal('grower'))),
     authProvider: v.union(v.literal('google'), v.literal('email')),
     region: v.optional(v.string()),
     orchardName: v.optional(v.string()),
     createdAtMs: v.number(),
-  }).index('by_clerk_id', ['clerkId']),
+  })
+    .index('by_clerk_id', ['clerkId'])
+    .index('by_email', ['email']),
 
   trees: defineTable({
     userId: v.string(), // Clerk userId
@@ -174,6 +177,8 @@ export default defineSchema({
       })
     ),
     createdAtMs: v.number(),
-  }).index('by_channel', ['channelId', 'createdAtMs']),
+  })
+    .index('by_channel', ['channelId', 'createdAtMs'])
+    .index('by_sender', ['senderClerkId']),
 });
 

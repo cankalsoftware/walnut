@@ -10,6 +10,7 @@
 
 import type * as shop from "../shop.js";
 import type * as sync from "../sync.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -20,6 +21,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   shop: typeof shop;
   sync: typeof sync;
+  users: typeof users;
 }>;
 
 /**

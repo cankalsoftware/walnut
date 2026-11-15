@@ -18,6 +18,7 @@ import {
   INITIAL_CARE_TASKS,
 } from '../../src/data/walnutLifecycle';
 import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
+import { LockedTabNotice } from '../../src/components/LockedTabNotice';
 
 const FILTERS: { key: 'all' | CareCategory; label: string; icon: string }[] = [
   { key: 'all', label: 'All Year', icon: 'calendar-outline' },
@@ -33,6 +34,15 @@ export default function CareCalendarScreen() {
   const { isSignedIn } = useWalnutCloud();
   const [selectedFilter, setSelectedFilter] = useState<'all' | CareCategory>('all');
   const [tasks, setTasks] = useState<CareTask[]>(INITIAL_CARE_TASKS);
+
+  if (!isSignedIn) {
+    return (
+      <LockedTabNotice
+        title="Sign In Required for Care Calendar"
+        description="Sign in to view and manage your orchard care schedule, watering intervals, and treatment reminders."
+      />
+    );
+  }
   const [masterPushEnabled, setMasterPushEnabled] = useState(true);
   const [dailyWeeklyPopupsEnabled, setDailyWeeklyPopupsEnabled] = useState(true);
 

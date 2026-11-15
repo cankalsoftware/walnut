@@ -18,6 +18,7 @@ import {
   INITIAL_TREES,
 } from '../../src/data/walnutLifecycle';
 import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
+import { LockedTabNotice } from '../../src/components/LockedTabNotice';
 
 export default function CommunityChatScreen() {
   const router = useRouter();
@@ -26,6 +27,15 @@ export default function CommunityChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [attachScanCard, setAttachScanCard] = useState(false);
+
+  if (!isSignedIn) {
+    return (
+      <LockedTabNotice
+        title="Sign In Required for Grower Community"
+        description="Sign in to join grower channels, share orchard scan cards, and exchange seasonal advice."
+      />
+    );
+  }
 
   const channelMessages = messages.filter(
     (m) => m.channelId === selectedChannel

@@ -1,5 +1,24 @@
-import { mutation, query } from './_generated/server';
+import { mutation, MutationCtx, query } from './_generated/server';
 import { v } from 'convex/values';
+
+const ADMIN_EMAIL = 'pinarlik99@gmail.com';
+
+async function requireAdmin(ctx: MutationCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new Error('Unauthorized: admin sign-in required');
+  }
+  const email = (identity.email ?? '').trim().toLowerCase();
+  const user = await ctx.db
+    .query('users')
+    .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+    .first();
+
+  if (email !== ADMIN_EMAIL && user?.role !== 'admin') {
+    throw new Error('Forbidden: administrator permissions required');
+  }
+  return identity;
+}
 
 /**
  * Generates a short-lived Convex upload URL so the Web Admin Portal
@@ -8,6 +27,7 @@ import { v } from 'convex/values';
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -48,6 +68,8 @@ export const upsertProduct = mutation({
     imageStorageId: v.optional(v.id('_storage')),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
     const existing = await ctx.db
       .query('shopProducts')
       .withIndex('by_sku', (q) => q.eq('sku', args.sku))
@@ -91,6 +113,7 @@ export const updateProductImage = mutation({
     imageStorageId: v.id('_storage'),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     await ctx.db.patch(args.id, {
       imageStorageId: args.imageStorageId,
       updatedAtMs: Date.now(),
@@ -101,6 +124,7 @@ export const updateProductImage = mutation({
 export const toggleStock = mutation({
   args: { id: v.id('shopProducts') },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const existing = await ctx.db.get(args.id);
     if (!existing) return;
     await ctx.db.patch(args.id, {
@@ -113,10 +137,10 @@ export const toggleStock = mutation({
 export const updatePrice = mutation({
   args: { id: v.id('shopProducts'), priceUsd: v.number() },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     await ctx.db.patch(args.id, {
       priceUsd: Math.max(1, args.priceUsd),
       updatedAtMs: Date.now(),
     });
   },
 });
-

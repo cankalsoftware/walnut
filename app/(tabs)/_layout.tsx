@@ -55,7 +55,8 @@ export default function TabsLayout() {
         name="scanner"
         listeners={lockedTabListeners}
         options={{
-          title: isSignedIn ? 'Camera AI' : 'Camera AI 🔒',
+          title: 'Camera',
+          tabBarLabel: () => null,
           tabBarIcon: ({ focused }) => (
             <View
               style={[
@@ -126,7 +127,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.walnutGreen[500],
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Platform.OS === 'ios' ? 18 : 22,
+    marginBottom: Platform.OS === 'ios' ? 4 : 6,
     borderWidth: 3,
     borderColor: Colors.walnutGreen[200],
     shadowColor: Colors.walnutGreen[900],

@@ -19,6 +19,7 @@ import {
 } from '../../src/services/yoloService';
 import { INITIAL_TREES } from '../../src/data/walnutLifecycle';
 import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
+import { LockedTabNotice } from '../../src/components/LockedTabNotice';
 
 const QUADRANTS: CanopyQuadrant[] = ['North', 'East', 'South', 'West'];
 
@@ -37,6 +38,15 @@ export default function CameraAiScreen() {
       setMode(params.mode);
     }
   }, [params.mode]);
+
+  if (!isSignedIn) {
+    return (
+      <LockedTabNotice
+        title="Sign In Required for Camera AI"
+        description="Sign in to run orchard tree scans and save yield counts to your local SQLite & cloud backup."
+      />
+    );
+  }
   const [selectedTreeIndex, setSelectedTreeIndex] = useState(0);
   const [frameSeed, setFrameSeed] = useState(1);
   const [activeQuadrant, setActiveQuadrant] = useState<CanopyQuadrant>('North');

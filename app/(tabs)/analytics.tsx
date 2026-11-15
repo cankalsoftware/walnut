@@ -19,67 +19,28 @@ import {
   TuyaSensorNode,
 } from '../../src/data/walnutLifecycle';
 import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
+import { LockedTabNotice } from '../../src/components/LockedTabNotice';
 
 export default function OrchardSetupAndAnalyticsScreen() {
   const router = useRouter();
-  const { isSignedIn, careSetup, updateCareSetup, resetCareSetupToDefaults } =
-    useWalnutCloud();
+  const {
+    isSignedIn,
+    careSetup,
+    updateCareSetup,
+    resetCareSetupToDefaults,
+    syncMode,
+    setSyncMode,
+    pendingUploadCount,
+    syncPendingToConvex,
+  } = useWalnutCloud();
   const [sensors, setSensors] = useState<TuyaSensorNode[]>(TUYA_SENSOR_NODES);
 
   if (!isSignedIn) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: 24,
-          }}
-        >
-          <Ionicons
-            name="lock-closed"
-            size={40}
-            color={Colors.walnutGreen[700]}
-          />
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: '800',
-              color: Colors.walnutGreen[900],
-              marginTop: 12,
-              textAlign: 'center',
-            }}
-          >
-            Sign In Required for Sensors & Setup
-          </Text>
-          <Text
-            style={{
-              fontSize: 13,
-              color: Colors.text.secondary,
-              marginTop: 6,
-              marginBottom: 18,
-              textAlign: 'center',
-            }}
-          >
-            Sign in to configure your orchard soil, location zone, and live
-            sensor settings.
-          </Text>
-          <TouchableOpacity
-            style={{
-              backgroundColor: Colors.walnutGreen[700],
-              paddingHorizontal: 20,
-              paddingVertical: 12,
-              borderRadius: 12,
-            }}
-            onPress={() => router.push('/auth')}
-          >
-            <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>
-              Sign In to Unlock
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <LockedTabNotice
+        title="Sign In Required for Sensors & Setup"
+        description="Sign in to configure your orchard soil, location zone, and live sensor settings."
+      />
     );
   }
 
@@ -198,6 +159,56 @@ export default function OrchardSetupAndAnalyticsScreen() {
               </Text>
             </TouchableOpacity>
           )}
+        </View>
+
+        {/* Local SQLite to Cloud Sync Setting (Default: Auto) */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>Orchard Data Sync</Text>
+              <Text style={styles.cardSub}>
+                Saved in local SQLite (14-day post-sync retention). Pending:{' '}
+                {pendingUploadCount}
+              </Text>
+            </View>
+            <View style={styles.pluginTag}>
+              <Text style={styles.pluginTagText}>
+                {syncMode === 'auto' ? 'AUTO' : 'MANUAL'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.soilRow}>
+            {(['auto', 'manual'] as const).map((mode) => {
+              const active = syncMode === mode;
+              return (
+                <TouchableOpacity
+                  key={mode}
+                  style={[styles.soilChip, active && styles.soilChipActive]}
+                  onPress={() => setSyncMode(mode)}
+                >
+                  <Text
+                    style={[
+                      styles.soilChipText,
+                      active && styles.soilChipTextActive,
+                    ]}
+                  >
+                    {mode === 'auto' ? 'Auto Sync (Default)' : 'Manual Sync'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <TouchableOpacity
+            style={styles.purgeBtn}
+            onPress={() => syncPendingToConvex()}
+          >
+            <Ionicons name="cloud-upload-outline" size={16} color="#FFFFFF" />
+            <Text style={styles.purgeBtnText}>
+              Sync Pending Records Now ({pendingUploadCount})
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Walnuts Orchard Sensors Menu */}
