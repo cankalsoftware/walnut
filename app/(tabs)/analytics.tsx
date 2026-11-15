@@ -20,6 +20,7 @@ import {
 } from '../../src/data/walnutLifecycle';
 import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
 import { LockedTabNotice } from '../../src/components/LockedTabNotice';
+import { HelpButton } from '../../src/components/HelpModal';
 
 export default function OrchardSetupAndAnalyticsScreen() {
   const router = useRouter();
@@ -61,7 +62,23 @@ export default function OrchardSetupAndAnalyticsScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Orchard Setup & Analytics</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={styles.title}>Orchard Setup & Analytics</Text>
+          <HelpButton
+            help={{
+              title: 'Orchard Setup & SQLite Sync',
+              whatItDoes:
+                'Configures your soil type, location zone, Tuya sensors, and Auto/Manual Convex cloud sync.',
+              howToDoIt: [
+                'Select your soil type (Loam, Clay, or Sandy) to calibrate watering intervals.',
+                'Leave Sync Mode on "Auto" (default) for automatic cloud backup when signed in, or switch to "Manual" in low-signal areas.',
+                'Use "Run 14-Day Auto-Purge" anytime to free space from records already synced > 14 days ago.',
+              ],
+              whatToExpect:
+                'Unsynced PENDING_UPLOAD records are never purged until they are safely uploaded to Convex Cloud.',
+            }}
+          />
+        </View>
         <Text style={styles.subtitle}>
           Customize care parameters for your soil & location, manage sensors, and
           track nut sizing

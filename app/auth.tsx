@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../src/theme/colors';
 import { useWalnutCloud } from '../src/providers/ConvexClerkProvider';
+import { HelpButton } from '../src/components/HelpModal';
 
 export default function GrowerAccountScreen() {
   const router = useRouter();
@@ -226,7 +227,23 @@ export default function GrowerAccountScreen() {
 
         {/* Orchard Backup Controls */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Orchard Cloud Backup</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={styles.sectionTitle}>Orchard Cloud Backup</Text>
+            <HelpButton
+              help={{
+                title: 'Cloud Backup, GDPR Export & Deletion',
+                whatItDoes:
+                  'Manages manual Convex backup, GDPR JSON data export, Offline Lock Mode, and permanent account deletion.',
+                howToDoIt: [
+                  'Tap "Back Up Pending Orchard Logs" to upload queued SQLite records immediately.',
+                  'Tap "Export My Orchard Data (GDPR JSON)" to download or share a copy of your orchard records.',
+                  'Tap "Log Out" to lock orchard menus, or "Delete Account & Data" to erase all cloud + local records.',
+                ],
+                whatToExpect:
+                  'Account deletion permanently removes your Convex records, community messages, local SQLite cache, and Clerk login.',
+              }}
+            />
+          </View>
           <Text style={styles.sectionDesc}>
             Your tree counts and care logs always work offline in the grove and
             back up automatically when signal returns.

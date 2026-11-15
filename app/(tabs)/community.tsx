@@ -19,6 +19,7 @@ import {
 } from '../../src/data/walnutLifecycle';
 import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
 import { LockedTabNotice } from '../../src/components/LockedTabNotice';
+import { HelpButton } from '../../src/components/HelpModal';
 
 export default function CommunityChatScreen() {
   const router = useRouter();
@@ -84,13 +85,26 @@ export default function CommunityChatScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         {/* Header */}
-        <View style={styles.header}>
-          <View>
+        <View style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+          <View style={{ flex: 1 }}>
             <Text style={styles.title}>Grower Community</Text>
             <Text style={styles.subtitle}>
               Connect with walnut growers & share tree yield cards
             </Text>
           </View>
+          <HelpButton
+            help={{
+              title: 'Grower Community',
+              whatItDoes:
+                'Lets you discuss pruning, blight control, and harvest yields with other walnut growers.',
+              howToDoIt: [
+                'Pick a topic channel at the top.',
+                'Type a message or toggle "Attach Scan Card" to share your latest tree metrics.',
+              ],
+              whatToExpect:
+                'Messages and attached yield cards appear in the channel feed for fellow growers.',
+            }}
+          />
         </View>
 
         {/* Channel Switcher Strip */}

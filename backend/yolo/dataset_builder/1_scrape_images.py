@@ -22,6 +22,7 @@ Usage:
 import argparse
 import hashlib
 import io
+import json
 import os
 import re
 import time
@@ -40,12 +41,18 @@ DEFAULT_SCRAPE_QUERIES: dict[str, dict[str, list[str]]] = {
             "walnuts on soil autumn leaves orchard",
             "harvested walnuts on ground under tree",
             "english walnut shells on ground orchard",
+            "walnut shaking harvest nuts on orchard floor",
+            "chandler walnuts on ground before sweeping",
+            "persian walnut nuts scattered on dirt ground",
         ],
         "walnut_in_hull": [
             "fallen green walnut hull on ground",
             "walnut in split green husk on ground",
             "black and green walnut hulls fallen on grass",
             "juglans regia fallen nuts with husks on soil",
+            "dropped green walnuts under tree autumn",
+            "rotting walnut husks on orchard floor",
+            "walnuts with cracked green hulls on dirt",
         ],
     },
     "canopy": {
@@ -53,15 +60,21 @@ DEFAULT_SCRAPE_QUERIES: dict[str, dict[str, list[str]]] = {
             "walnut hull split on tree branch",
             "ripening walnut green husk cracking on tree",
             "juglans regia hull split harvest readiness",
+            "walnut husk splitting open on tree",
+            "mature walnut kernel visible in split hull on branch",
         ],
         "walnut_blight_damaged": [
             "walnut blight xanthomonas arboricola fruit damage",
             "walnut husk fly blackened walnut on tree",
             "diseased blighted walnut on tree branch",
+            "walnut anthracnose black spots on green nut",
+            "sunburn and blight lesions on walnut canopy",
         ],
         "walnut_green": [
             "green walnuts growing on tree branch",
             "juglans regia green fruit cluster canopy",
+            "unripe green walnut cluster on tree leaves",
+            "chandler walnut tree canopy fruiting branch",
         ],
     },
 }
@@ -172,16 +185,136 @@ def scrape_flickr_api(query: str, max_images: int = 60, api_key: str | None = No
     return urls
 
 
+def scrape_google_html(query: str, max_images: int = 40) -> list[str]:
+    """Scrapes direct image URLs from Google Images HTML."""
+    urls: list[str] = []
+    seen: set[str] = set()
+    try:
+        encoded = urllib.parse.quote_plus(query)
+        search_url = f"https://www.google.com/search?tbm=isch&q={encoded}&hl=en"
+        resp = requests.get(search_url, headers=HEADERS, timeout=12)
+        if resp.status_code != 200 or "sorry/index" in resp.url:
+            print("  [Google Warning] Rate-limited or blocked; skipping.", flush=True)
+            return urls
+        matches = re.findall(r'\["(https://[^"]+\.(?:jpg|jpeg|png|webp))",\d+,\d+\]', resp.text, re.IGNORECASE)
+        for link in matches:
+            if link not in seen and "gstatic.com" not in link:
+                seen.add(link)
+                urls.append(link)
+                if len(urls) >= max_images:
+                    break
+    except Exception as exc:
+        print(f"  [Google Warning] {exc}", flush=True)
+    return urls
+
+
+def scrape_yahoo_html(query: str, max_images: int = 40) -> list[str]:
+    """Scrapes image URLs from Yahoo Image Search."""
+    urls: list[str] = []
+    seen: set[str] = set()
+    try:
+        encoded = urllib.parse.quote_plus(query)
+        search_url = f"https://images.search.yahoo.com/search/images?p={encoded}"
+        resp = requests.get(search_url, headers=HEADERS, timeout=12)
+        if resp.status_code != 200:
+            print(f"  [Yahoo Warning] HTTP {resp.status_code}", flush=True)
+            return urls
+        matches = re.findall(r"imgurl=([^&\"']+)", resp.text)
+        for raw_link in matches:
+            link = urllib.parse.unquote(raw_link)
+            if not link.startswith("http"):
+                link = f"https://{link.lstrip('/')}"
+            if link not in seen:
+                seen.add(link)
+                urls.append(link)
+                if len(urls) >= max_images:
+                    break
+    except Exception as exc:
+        print(f"  [Yahoo Warning] {exc}", flush=True)
+    return urls
+
+
+def scrape_yandex_html(query: str, max_images: int = 40) -> list[str]:
+    """Scrapes image URLs from Yandex Images (skips gracefully if CAPTCHA-gated)."""
+    urls: list[str] = []
+    seen: set[str] = set()
+    try:
+        encoded = urllib.parse.quote_plus(query)
+        search_url = f"https://yandex.com/images/search?text={encoded}"
+        resp = requests.get(search_url, headers=HEADERS, timeout=12)
+        if resp.status_code != 200 or "showcaptcha" in resp.url:
+            print("  [Yandex Warning] Rate-limited or CAPTCHA-gated; skipping.", flush=True)
+            return urls
+        matches = re.findall(r'"url":"(https?://[^"]+\.(?:jpg|jpeg|png|webp))"', resp.text, re.IGNORECASE)
+        for link in matches:
+            clean = link.replace("\\/", "/")
+            if clean not in seen:
+                seen.add(clean)
+                urls.append(clean)
+                if len(urls) >= max_images:
+                    break
+    except Exception as exc:
+        print(f"  [Yandex Warning] {exc}", flush=True)
+    return urls
+
+
+def scrape_wikimedia(query: str, max_images: int = 40) -> list[str]:
+    """Scrapes high-resolution public botanical/orchard photos from Wikimedia Commons API."""
+    urls: list[str] = []
+    try:
+        params = {
+            "action": "query",
+            "generator": "search",
+            "gsrnamespace": 6,
+            "gsrsearch": query,
+            "gsrlimit": min(50, max_images),
+            "prop": "imageinfo",
+            "iiprop": "url",
+            "format": "json",
+        }
+        resp = requests.get(
+            "https://commons.wikimedia.org/w/api.php",
+            params=params,
+            headers={"User-Agent": "WalnutIQDatasetBuilder/1.0"},
+            timeout=12,
+        )
+        data = resp.json()
+        pages = data.get("query", {}).get("pages", {})
+        for page in pages.values():
+            infos = page.get("imageinfo", [])
+            if infos and infos[0].get("url"):
+                u = infos[0]["url"]
+                if u.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                    urls.append(u)
+                    if len(urls) >= max_images:
+                        break
+    except Exception as exc:
+        print(f"  [Wikimedia Warning] {exc}", flush=True)
+    return urls
+
+
+def scrape_instagram_indexed(query: str, max_images: int = 40) -> list[str]:
+    """Searches public indexed Instagram walnut posts via Bing/DuckDuckGo."""
+    ig_query = f"site:instagram.com {query}"
+    urls = scrape_bing_html(ig_query, max_images)
+    if len(urls) < max_images:
+        urls.extend(scrape_duckduckgo(ig_query, max_images - len(urls)))
+    return urls[:max_images]
+
+
 def download_and_deduplicate(
     urls: Iterable[str],
     out_dir: Path,
     existing_hashes: set[str],
     min_size: int = 300,
+    max_save: int | None = None,
 ) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     saved = 0
 
     for url in urls:
+        if max_save is not None and saved >= max_save:
+            break
         try:
             resp = requests.get(url, headers=HEADERS, timeout=10)
             if resp.status_code != 200 or not resp.content:
@@ -218,9 +351,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--engine",
-        choices=["all", "bing", "ddg", "flickr"],
+        type=str,
         default="all",
-        help="Search engine to use (default: 'all')",
+        help="Comma-separated engines (bing,ddg,google,yahoo,yandex,wikimedia,instagram,flickr) or 'all'",
     )
     parser.add_argument(
         "--max-per-query",
@@ -234,42 +367,135 @@ def main() -> None:
         default=300,
         help="Minimum width/height in pixels (default: 300)",
     )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="",
+        help="Output folder for scraped images (default: backend/yolo/dataset_builder/raw_scraped)",
+    )
+    parser.add_argument(
+        "--max-total",
+        type=int,
+        default=0,
+        help="Optional hard cap on total images saved across all queries (0 = unlimited)",
+    )
+    parser.add_argument(
+        "--queries-json",
+        type=str,
+        default="",
+        help="Optional JSON array of specific search queries to run",
+    )
     args = parser.parse_args()
 
     builder_root = Path(__file__).resolve().parent
-    raw_root = builder_root / "raw_scraped"
+    raw_root = (
+        Path(args.output_dir).expanduser().resolve()
+        if args.output_dir.strip()
+        else (builder_root / "raw_scraped")
+    )
+    raw_root.mkdir(parents=True, exist_ok=True)
+
+    selected_filter: set[str] | None = None
+    if args.queries_json.strip():
+        try:
+            parsed_q = json.loads(args.queries_json)
+            if isinstance(parsed_q, list) and len(parsed_q) > 0:
+                selected_filter = {str(q) for q in parsed_q}
+        except Exception:
+            selected_filter = None
 
     targets = ["ground", "canopy"] if args.target == "all" else [args.target]
+    filtered_plan: list[tuple[str, str, list[str]]] = []
+    for tg in targets:
+        for cls_name, q_list in DEFAULT_SCRAPE_QUERIES[tg].items():
+            active_qs = (
+                [q for q in q_list if q in selected_filter]
+                if selected_filter is not None
+                else list(q_list)
+            )
+            if active_qs:
+                filtered_plan.append((tg, cls_name, active_qs))
+
+    total_queries = sum(len(qs) for _, _, qs in filtered_plan)
+    engine_order = [
+        e.strip().lower()
+        for e in (
+            "bing,ddg,google,yahoo,yandex,wikimedia,instagram,flickr"
+            if args.engine.strip().lower() == "all"
+            else args.engine
+        ).split(",")
+        if e.strip()
+    ]
+    per_engine_cap = max(1, args.max_per_query)
+
+    print(
+        f"[Scraper] Criteria: target={args.target} | engines={','.join(engine_order)} | "
+        f"per_category_per_engine={per_engine_cap} | queries={total_queries} | min_size={args.min_size}px",
+        flush=True,
+    )
+    print(f"[Scraper] Saving downloaded images to: {raw_root}", flush=True)
+
+    engine_fn_map = {
+        "bing": scrape_bing_html,
+        "ddg": scrape_duckduckgo,
+        "google": scrape_google_html,
+        "yahoo": scrape_yahoo_html,
+        "yandex": scrape_yandex_html,
+        "wikimedia": scrape_wikimedia,
+        "instagram": scrape_instagram_indexed,
+        "flickr": scrape_flickr_api,
+    }
+
     existing_hashes: set[str] = set()
     total_saved = 0
 
-    for target_group in targets:
-        class_map = DEFAULT_SCRAPE_QUERIES[target_group]
-        for class_name, queries in class_map.items():
-            class_out_dir = raw_root / target_group / class_name
-            print(f"\n[Scraper] Target: {target_group}/{class_name}")
+    for target_group, class_name, queries in filtered_plan:
+        class_out_dir = raw_root / target_group / class_name
+        print(f"\n[Scraper] === Category: {target_group}/{class_name} ===", flush=True)
+
+        for eng in engine_order:
+            scraper_fn = engine_fn_map.get(eng)
+            if scraper_fn is None:
+                continue
+
+            engine_cat_saved = 0
+            print(
+                f"[Scraper] [{target_group}/{class_name}] [{eng}] Target: up to {per_engine_cap} images",
+                flush=True,
+            )
 
             for q in queries:
-                candidate_urls: list[str] = []
-                if args.engine in ("all", "bing"):
-                    candidate_urls.extend(scrape_bing_html(q, args.max_per_query))
-                if args.engine in ("all", "ddg"):
-                    candidate_urls.extend(scrape_duckduckgo(q, args.max_per_query))
-                if args.engine in ("all", "flickr"):
-                    candidate_urls.extend(scrape_flickr_api(q, args.max_per_query))
+                if engine_cat_saved >= per_engine_cap:
+                    break
 
+                remaining = per_engine_cap - engine_cat_saved
+                print(
+                    f"[Scraper] [{target_group}/{class_name}] [{eng}] Searching: '{q}'...",
+                    flush=True,
+                )
+                candidate_urls = scraper_fn(q, remaining + 5)
                 count = download_and_deduplicate(
                     candidate_urls,
                     out_dir=class_out_dir,
                     existing_hashes=existing_hashes,
                     min_size=args.min_size,
+                    max_save=remaining,
                 )
+                engine_cat_saved += count
                 total_saved += count
-                print(f"  Query: '{q}' -> +{count} verified unique images")
+                print(
+                    f"[Scraper] [{target_group}/{class_name}] [{eng}] '{q}' -> {len(candidate_urls)} URLs, +{count} saved ({eng}: {engine_cat_saved}/{per_engine_cap}, overall: {total_saved})",
+                    flush=True,
+                )
 
-    print(f"\n[✓] Scraping finished! Total unique images saved: {total_saved}")
-    print(f"[→] Output folder: {raw_root}")
-    print("[→] Next step: Run `python yolo/dataset_builder/2_clip_filter_and_classify.py` to auto-filter with CLIP!")
+            print(
+                f"[Scraper] [{target_group}/{class_name}] [{eng}] Completed: {engine_cat_saved}/{per_engine_cap} saved",
+                flush=True,
+            )
+
+    print(f"\n[OK] Scraping finished! Total unique images saved: {total_saved}", flush=True)
+    print(f"[->] Output folder: {raw_root}", flush=True)
+    print("[->] Next step: Run Step 2 (CLIP Auto-Filter) to filter & sort images.", flush=True)
 
 
 if __name__ == "__main__":

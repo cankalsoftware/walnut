@@ -180,5 +180,18 @@ export default defineSchema({
   })
     .index('by_channel', ['channelId', 'createdAtMs'])
     .index('by_sender', ['senderClerkId']),
+
+  pipelineLogs: defineTable({
+    category: v.string(),
+    jobName: v.string(),
+    status: v.string(),
+    target: v.optional(v.string()),
+    engines: v.optional(v.array(v.string())),
+    logs: v.array(v.string()),
+    createdAtMs: v.number(),
+    expiresAtMs: v.number(),
+  })
+    .index('by_category', ['category', 'createdAtMs'])
+    .index('by_expires', ['expiresAtMs']),
 });
 

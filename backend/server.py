@@ -35,6 +35,8 @@ REPO_ROOT = BACKEND_DIR.parent
 YOLO_DIR = BACKEND_DIR / "yolo"
 BUILDER_DIR = YOLO_DIR / "dataset_builder"
 WEIGHTS_MANIFEST = REPO_ROOT / "weights" / "manifest.json"
+DEFAULT_SCRAPE_DIR = BUILDER_DIR / "raw_scraped"
+ACTIVE_SCRAPE_DIR = DEFAULT_SCRAPE_DIR
 ADMIN_WORKER_TOKEN = os.environ.get("ADMIN_WORKER_TOKEN", "").strip()
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -68,8 +70,8 @@ class JobState:
     def append_log(self, line: str) -> None:
         with self.lock:
             self.logs.append(line.rstrip())
-            if len(self.logs) > 200:
-                self.logs = self.logs[-200:]
+            if len(self.logs) > 2000:
+                self.logs = self.logs[-2000:]
 
 
 JOB_STATE = JobState()
@@ -81,20 +83,25 @@ def run_background_command(job_name: str, cmd: list[str]) -> bool:
         return False
 
     def _worker() -> None:
+        with JOB_STATE.lock:
+            JOB_STATE.logs = []
         JOB_STATE.active_job = job_name
         JOB_STATE.status = "RUNNING"
         JOB_STATE.started_at = datetime.now(timezone.utc).isoformat()
         JOB_STATE.finished_at = None
-        JOB_STATE.append_log(f"\n=== [START JOB: {job_name}] ===")
+        JOB_STATE.append_log(f"=== [START JOB: {job_name}] ===")
         JOB_STATE.append_log(f"$ {' '.join(cmd)}")
 
         try:
             proc = subprocess.Popen(
                 cmd,
                 cwd=str(REPO_ROOT),
+                env={**os.environ, "PYTHONIOENCODING": "utf-8"},
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 bufsize=1,
             )
             assert proc.stdout is not None
@@ -155,12 +162,24 @@ def get_pipeline_status() -> dict[str, Any]:
             "status": JOB_STATE.status,
             "startedAt": JOB_STATE.started_at,
             "finishedAt": JOB_STATE.finished_at,
-            "logs": JOB_STATE.logs[-45:],
+            "logs": list(JOB_STATE.logs),
         },
         "counts": {
-            "rawScrapedTotal": count_images_in(raw_dir),
-            "rawCanopy": count_images_in(raw_dir / "canopy"),
-            "rawGround": count_images_in(raw_dir / "ground"),
+            "rawScrapedTotal": (
+                count_images_in(raw_dir)
+                if ACTIVE_SCRAPE_DIR.resolve() == raw_dir.resolve()
+                else count_images_in(ACTIVE_SCRAPE_DIR) + count_images_in(raw_dir)
+            ),
+            "rawCanopy": (
+                count_images_in(raw_dir / "canopy")
+                if ACTIVE_SCRAPE_DIR.resolve() == raw_dir.resolve()
+                else count_images_in(ACTIVE_SCRAPE_DIR / "canopy") + count_images_in(raw_dir / "canopy")
+            ),
+            "rawGround": (
+                count_images_in(raw_dir / "ground")
+                if ACTIVE_SCRAPE_DIR.resolve() == raw_dir.resolve()
+                else count_images_in(ACTIVE_SCRAPE_DIR / "ground") + count_images_in(raw_dir / "ground")
+            ),
             "curatedTotal": count_images_in(curated_dir),
             "curatedCanopy": count_images_in(curated_dir / "canopy"),
             "curatedGround": count_images_in(curated_dir / "ground"),
@@ -171,6 +190,8 @@ def get_pipeline_status() -> dict[str, Any]:
             "datasetGroundImages": count_images_in(datasets_dir / "walnut_ground" / "images"),
             "datasetGroundLabels": count_labels_in(datasets_dir / "walnut_ground" / "labels"),
         },
+        "defaultDownloadsDir": str(DEFAULT_SCRAPE_DIR),
+        "activeScrapeDir": str(ACTIVE_SCRAPE_DIR),
         "weightsManifest": manifest_data,
     }
 
@@ -179,10 +200,20 @@ class ScrapeRequest(BaseModel):
     target: str = "all"
     engine: str = "all"
     max_per_query: int = 40
+    max_total: int = 40
+    output_dir: str = ""
+    selected_queries: list[str] | None = None
 
 
 @app.post("/api/jobs/scrape")
 def trigger_scrape(req: ScrapeRequest) -> dict[str, Any]:
+    global ACTIVE_SCRAPE_DIR
+    chosen_dir = (
+        Path(req.output_dir).expanduser().resolve()
+        if req.output_dir.strip()
+        else DEFAULT_SCRAPE_DIR
+    )
+    ACTIVE_SCRAPE_DIR = chosen_dir
     cmd = [
         sys.executable,
         str(BUILDER_DIR / "1_scrape_images.py"),
@@ -192,9 +223,15 @@ def trigger_scrape(req: ScrapeRequest) -> dict[str, Any]:
         req.engine,
         "--max-per-query",
         str(req.max_per_query),
+        "--max-total",
+        str(req.max_total),
+        "--output-dir",
+        str(chosen_dir),
     ]
+    if req.selected_queries:
+        cmd.extend(["--queries-json", json.dumps(req.selected_queries)])
     started = run_background_command(f"Scrape Images ({req.target} / {req.engine})", cmd)
-    return {"started": started}
+    return {"started": started, "outputDir": str(chosen_dir)}
 
 
 class ClipFilterRequest(BaseModel):
@@ -296,6 +333,48 @@ def trigger_train_yolo(req: TrainYoloRequest) -> dict[str, Any]:
     ]
     started = run_background_command(f"Train {req.arch.upper()} ({req.mode})", cmd)
     return {"started": started}
+
+
+@app.get("/api/fs/list")
+def list_directories(path: str = "") -> dict[str, Any]:
+    target = (
+        Path(path).expanduser().resolve()
+        if path.strip()
+        else DEFAULT_SCRAPE_DIR.resolve()
+    )
+    if not target.exists():
+        target = target.parent if target.parent.exists() else Path.home()
+    if not target.is_dir():
+        target = target.parent
+
+    dirs: list[dict[str, str]] = []
+    try:
+        for entry in sorted(target.iterdir(), key=lambda p: p.name.lower()):
+            if entry.is_dir() and not entry.name.startswith("."):
+                dirs.append({"name": entry.name, "path": str(entry)})
+    except PermissionError:
+        pass
+
+    shortcuts: list[dict[str, str]] = [
+        {"label": "Default (raw_scraped)", "path": str(DEFAULT_SCRAPE_DIR)},
+        {"label": "Downloads", "path": str(Path.home() / "Downloads")},
+        {"label": "Home", "path": str(Path.home())},
+    ]
+    if os.name == "nt":
+        import string
+
+        for letter in string.ascii_uppercase:
+            drive = Path(f"{letter}:\\")
+            if drive.exists():
+                shortcuts.append({"label": f"{letter}:\\", "path": str(drive)})
+
+    parent = target.parent if target.parent != target else None
+    return {
+        "currentPath": str(target),
+        "parentPath": str(parent) if parent else None,
+        "dirs": dirs[:200],
+        "shortcuts": shortcuts,
+    }
 
 
 if __name__ == "__main__":

@@ -1,7 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ClerkProvider } from '@clerk/react';
+import { ClerkProvider, useAuth } from '@clerk/react';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
+import { ConvexProviderWithClerk } from 'convex/react-clerk';
 import App from './App';
 
 const CLERK_PUBLISHABLE_KEY =
@@ -23,20 +24,30 @@ function renderWithProviders() {
   const app = (
     <App hasClerk={hasValidClerkKey} hasConvex={Boolean(convexClient)} />
   );
-  const withConvex = convexClient ? (
-    <ConvexProvider client={convexClient}>{app}</ConvexProvider>
-  ) : (
-    app
-  );
+
+  if (hasValidClerkKey && convexClient) {
+    return (
+      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+        <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
+          {app}
+        </ConvexProviderWithClerk>
+      </ClerkProvider>
+    );
+  }
 
   if (hasValidClerkKey) {
     return (
       <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
-        {withConvex}
+        {app}
       </ClerkProvider>
     );
   }
-  return withConvex;
+
+  if (convexClient) {
+    return <ConvexProvider client={convexClient}>{app}</ConvexProvider>;
+  }
+
+  return app;
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

@@ -19,6 +19,7 @@ import {
   TUYA_SENSOR_NODES,
 } from '../../src/data/walnutLifecycle';
 import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
+import { HelpButton } from '../../src/components/HelpModal';
 
 export default function OrchardDashboardScreen() {
   const router = useRouter();
@@ -102,19 +103,35 @@ export default function OrchardDashboardScreen() {
                 : `Demo Orchard • Sign in to unlock menus & your location guide`}
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.syncChip}
-            onPress={() => router.push('/auth')}
-          >
-            <Ionicons
-              name={isSignedIn ? 'person-circle' : 'log-in-outline'}
-              size={18}
-              color={Colors.walnutGreen[800]}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <HelpButton
+              help={{
+                title: 'Orchard Home & Yield Overview',
+                whatItDoes:
+                  'Shows your walnut trees, estimated nut counts, seasonal guidance, and quick actions.',
+                howToDoIt: [
+                  'Sign in via the Account / Sign In button to unlock Care Calendar, Camera AI, Community, and Setup & Data.',
+                  'Tap Daily or Weekly guides to see tasks calibrated to your soil and location.',
+                  'Use the Camera button in the bottom bar to count canopy or ground walnuts.',
+                ],
+                whatToExpect:
+                  'Your orchard counts and care logs save locally in SQLite even offline, and sync to the cloud when signed in.',
+              }}
             />
-            <Text style={styles.syncChipText}>
-              {isSignedIn ? 'Account' : 'Sign In'}
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.syncChip}
+              onPress={() => router.push('/auth')}
+            >
+              <Ionicons
+                name={isSignedIn ? 'person-circle' : 'log-in-outline'}
+                size={18}
+                color={Colors.walnutGreen[800]}
+              />
+              <Text style={styles.syncChipText}>
+                {isSignedIn ? 'Account' : 'Sign In'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Demo Mode Banner for Signed-Out Users */}

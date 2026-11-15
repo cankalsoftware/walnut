@@ -20,6 +20,7 @@ import {
 import { INITIAL_TREES } from '../../src/data/walnutLifecycle';
 import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
 import { LockedTabNotice } from '../../src/components/LockedTabNotice';
+import { HelpButton } from '../../src/components/HelpModal';
 
 const QUADRANTS: CanopyQuadrant[] = ['North', 'East', 'South', 'West'];
 
@@ -94,6 +95,24 @@ export default function CameraAiScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Top Mode Switcher: Option 1 (Canopy Count) vs Option 2 (Ground Finder) vs Growth */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.walnutGreen[900] }}>
+            Camera AI Scanner
+          </Text>
+          <HelpButton
+            help={{
+              title: 'Camera AI Scanner Modes',
+              whatItDoes:
+                'Estimates walnut counts on tree canopies, detects fallen nuts on the ground, and tracks hull/leaf health.',
+              howToDoIt: [
+                'Choose "1. Tree Count" for canopy quadrants (North/East/South/West), "2. Ground" for harvest pickup, or "3. Health".',
+                'Point at the tree or ground and tap Capture Frame.',
+              ],
+              whatToExpect:
+                'Detected counts update the tree yield estimate and save to your local SQLite queue.',
+            }}
+          />
+        </View>
         <View style={styles.modeTabs}>
           <TouchableOpacity
             style={[styles.modeTab, mode === 'canopy' && styles.modeTabActive]}

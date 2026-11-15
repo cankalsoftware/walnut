@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Show,
   SignInButton,
@@ -6,13 +6,14 @@ import {
   UserButton,
   useUser,
 } from '@clerk/react';
-import { useMutation } from 'convex/react';
+import { useConvexAuth, useMutation } from 'convex/react';
 import { anyApi } from 'convex/server';
 import ShopAdminTab from './components/ShopAdminTab';
 import LegalPages, {
   LegalRoute,
   detectLegalRoute,
 } from './components/LegalPages';
+import { WebHelpButton } from './components/HelpModal';
 
 const ADMIN_EMAIL = 'pinarlik99@gmail.com';
 
@@ -22,6 +23,8 @@ interface PipelineStatusResponse {
   job: {
     activeJob: string | null;
     status: string;
+    startedAt?: string | null;
+    finishedAt?: string | null;
     logs: string[];
   };
   counts: {
@@ -33,6 +36,8 @@ interface PipelineStatusResponse {
     datasetGroundImages: number;
     datasetGroundLabels: number;
   };
+  defaultDownloadsDir?: string;
+  activeScrapeDir?: string;
 }
 
 interface CareDefaultsConfig {
@@ -61,6 +66,90 @@ const INITIAL_CARE_DEFAULTS: CareDefaultsConfig = {
   dailyGuidanceNote:
     'Check 30cm root zone moisture before irrigation; clear dark hulls around young trunks.',
 };
+
+const SCRAPE_QUERY_OPTIONS: Record<
+  'ground' | 'canopy',
+  { className: string; label: string; queries: string[] }[]
+> = {
+  ground: [
+    {
+      className: 'walnut_in_shell',
+      label: 'Ground • Walnut in Shell',
+      queries: [
+        'fallen walnuts on ground grass harvest',
+        'walnuts on soil autumn leaves orchard',
+        'harvested walnuts on ground under tree',
+        'english walnut shells on ground orchard',
+        'walnut shaking harvest nuts on orchard floor',
+        'chandler walnuts on ground before sweeping',
+        'persian walnut nuts scattered on dirt ground',
+      ],
+    },
+    {
+      className: 'walnut_in_hull',
+      label: 'Ground • Walnut in Hull',
+      queries: [
+        'fallen green walnut hull on ground',
+        'walnut in split green husk on ground',
+        'black and green walnut hulls fallen on grass',
+        'juglans regia fallen nuts with husks on soil',
+        'dropped green walnuts under tree autumn',
+        'rotting walnut husks on orchard floor',
+        'walnuts with cracked green hulls on dirt',
+      ],
+    },
+  ],
+  canopy: [
+    {
+      className: 'walnut_hull_split',
+      label: 'Canopy • Hull Split',
+      queries: [
+        'walnut hull split on tree branch',
+        'ripening walnut green husk cracking on tree',
+        'juglans regia hull split harvest readiness',
+        'walnut husk splitting open on tree',
+        'mature walnut kernel visible in split hull on branch',
+      ],
+    },
+    {
+      className: 'walnut_blight_damaged',
+      label: 'Canopy • Blight Damaged',
+      queries: [
+        'walnut blight xanthomonas arboricola fruit damage',
+        'walnut husk fly blackened walnut on tree',
+        'diseased blighted walnut on tree branch',
+        'walnut anthracnose black spots on green nut',
+        'sunburn and blight lesions on walnut canopy',
+      ],
+    },
+    {
+      className: 'walnut_green',
+      label: 'Canopy • Green Walnuts',
+      queries: [
+        'green walnuts growing on tree branch',
+        'juglans regia green fruit cluster canopy',
+        'unripe green walnut cluster on tree leaves',
+        'chandler walnut tree canopy fruiting branch',
+      ],
+    },
+  ],
+};
+
+const ALL_SCRAPE_QUERIES = [
+  ...SCRAPE_QUERY_OPTIONS.ground.flatMap((g) => g.queries),
+  ...SCRAPE_QUERY_OPTIONS.canopy.flatMap((c) => c.queries),
+];
+
+const SCRAPE_ENGINE_OPTIONS = [
+  { id: 'bing', label: 'Bing Images' },
+  { id: 'ddg', label: 'DuckDuckGo' },
+  { id: 'google', label: 'Google Images' },
+  { id: 'yahoo', label: 'Yahoo Images' },
+  { id: 'yandex', label: 'Yandex Images' },
+  { id: 'wikimedia', label: 'Wikimedia Commons' },
+  { id: 'instagram', label: 'Instagram (Public Index)' },
+  { id: 'flickr', label: 'Flickr API' },
+] as const;
 
 export default function App({
   hasClerk,
@@ -144,7 +233,31 @@ function AdminPortalApp({
   const [scrapeTarget, setScrapeTarget] = useState<'ground' | 'canopy' | 'all'>(
     'ground'
   );
-  const [maxPerQuery, setMaxPerQuery] = useState<number>(40);
+  const [selectedQueries, setSelectedQueries] =
+    useState<string[]>(ALL_SCRAPE_QUERIES);
+  const [selectedEngines, setSelectedEngines] = useState<string[]>([
+    'bing',
+    'ddg',
+    'google',
+    'yahoo',
+    'wikimedia',
+  ]);
+  const [queriesExpanded, setQueriesExpanded] = useState(false);
+  const [enginesExpanded, setEnginesExpanded] = useState(false);
+  const [maxPerQuery, setMaxPerQuery] = useState<string>('40');
+  const [pipelineStepTab, setPipelineStepTab] = useState<
+    'scrape' | 'clip' | 'label' | 'import'
+  >('scrape');
+  const [scrapeModalOpen, setScrapeModalOpen] = useState(false);
+  const [scrapeOutputDir, setScrapeOutputDir] = useState<string>('');
+  const [folderExplorerOpen, setFolderExplorerOpen] = useState(false);
+  const [explorerData, setExplorerData] = useState<{
+    currentPath: string;
+    parentPath: string | null;
+    dirs: { name: string; path: string }[];
+    shortcuts: { label: string; path: string }[];
+  } | null>(null);
+  const [explorerError, setExplorerError] = useState<string | null>(null);
   const [walnutDataPath, setWalnutDataPath] = useState<string>('./WalnutData');
   const [trainTarget, setTrainTarget] = useState<'vps' | 'colab'>('vps');
   const [notice, setNotice] = useState<string | null>(null);
@@ -163,11 +276,113 @@ function AdminPortalApp({
     }
   };
 
+  const defaultScrapeFolder =
+    statusData?.defaultDownloadsDir ||
+    'backend/yolo/dataset_builder/raw_scraped';
+
+  const loadExplorerPath = async (targetPath: string) => {
+    setExplorerError(null);
+    try {
+      const headers: Record<string, string> = {};
+      if (workerToken.trim()) headers['x-admin-token'] = workerToken.trim();
+      const res = await fetch(
+        `${workerUrl}/api/fs/list?path=${encodeURIComponent(targetPath)}`,
+        { headers }
+      );
+      if (!res.ok) {
+        if (res.status === 404) {
+          setExplorerError(
+            `Folder browser endpoint (/api/fs/list) returned 404. Please restart backend/server.py so it loads the latest routes, or type a path manually.`
+          );
+          return;
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const json = await res.json();
+      setExplorerData(json);
+    } catch (err) {
+      setExplorerError(
+        `Cannot reach backend worker at ${workerUrl} (${err instanceof Error ? err.message : 'offline'}). Start/restart backend/server.py or type a path manually.`
+      );
+    }
+  };
+
+  const renderStepProgress = (
+    title: string,
+    keywords: string[],
+    idleText: string
+  ) => {
+    const activeJob = statusData?.job.activeJob ?? '';
+    const isStepActive = keywords.some((k) =>
+      activeJob.toLowerCase().includes(k.toLowerCase())
+    );
+    const stepStatus = isStepActive
+      ? (statusData?.job.status ?? 'IDLE')
+      : 'IDLE';
+    const matchingLogs = (statusData?.job.logs ?? []).filter((line) =>
+      keywords.some((k) => line.toLowerCase().includes(k.toLowerCase()))
+    );
+
+    return (
+      <div
+        style={{
+          marginTop: 14,
+          padding: 12,
+          borderRadius: 8,
+          backgroundColor: '#F4F8F1',
+          border: '1px solid #CFE3C4',
+          fontSize: 12,
+          width: '100%',
+          boxSizing: 'border-box',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 6,
+          }}
+        >
+          <strong style={{ color: '#294A1F' }}>
+            {title} ({stepStatus})
+          </strong>
+          <span style={{ color: '#6B7D65', fontSize: 11 }}>
+            Drag bottom-right corner to resize
+          </span>
+        </div>
+        <div
+          style={{
+            fontFamily: 'monospace',
+            fontSize: 12,
+            lineHeight: 1.45,
+            color: '#1A2616',
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #E6F0E0',
+            borderRadius: 6,
+            padding: 10,
+            minHeight: 140,
+            height: 200,
+            resize: 'vertical',
+            overflowY: 'auto',
+          }}
+        >
+          {matchingLogs.length > 0 ? (
+            matchingLogs.map((line, i) => <div key={i}>{line}</div>)
+          ) : (
+            <div style={{ color: '#6B7D65' }}>{idleText}</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   useEffect(() => {
     fetchWorkerStatus();
-    const id = setInterval(fetchWorkerStatus, 3500);
+    const intervalMs = statusData?.job.status === 'RUNNING' ? 1200 : 3500;
+    const id = setInterval(fetchWorkerStatus, intervalMs);
     return () => clearInterval(id);
-  }, [workerUrl, workerToken]);
+  }, [workerUrl, workerToken, statusData?.job.status]);
 
   const runJob = async (
     endpoint: string,
@@ -186,6 +401,19 @@ function AdminPortalApp({
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('Request failed');
+      setStatusData((prev) =>
+        prev
+          ? {
+              ...prev,
+              job: {
+                ...prev.job,
+                activeJob: label,
+                status: 'RUNNING',
+                logs: [],
+              },
+            }
+          : prev
+      );
       setNotice(`Started: ${label}`);
       fetchWorkerStatus();
     } catch {
@@ -222,6 +450,13 @@ function AdminPortalApp({
 
   const renderAdminWorkspace = () => (
     <div style={styles.page}>
+      {hasConvex && (
+        <ConvexPipelineLogger
+          statusData={statusData}
+          scrapeTarget={scrapeTarget}
+          selectedEngines={selectedEngines}
+        />
+      )}
       {/* Clean Header */}
       <header style={styles.header}>
         <div>
@@ -278,6 +513,19 @@ function AdminPortalApp({
         <section style={styles.card}>
           <h2 style={styles.cardTitle}>
             Optimal Walnut Care Defaults (Synced to Mobile App)
+            <WebHelpButton
+              help={{
+                title: 'Optimal Walnut Care Defaults',
+                whatItDoes:
+                  'Sets the default watering interval, target soil moisture, chill-hour goal, and nitrogen cutoff pushed to growers.',
+                howToDoIt: [
+                  'Adjust the numeric defaults and daily guidance banner.',
+                  'Click "Save & Publish Care Defaults to Mobile App".',
+                ],
+                whatToExpect:
+                  'Saved defaults are stored immediately and apply to growers unless they customize their own orchard settings.',
+              }}
+            />
           </h2>
           <p style={styles.cardDesc}>
             Set the baseline agronomic parameters pushed to the mobile app.
@@ -393,9 +641,57 @@ function AdminPortalApp({
             <h2 style={styles.cardTitle}>
               Dataset Gathering & Preparation Pipeline
             </h2>
-            <div style={styles.stepsGrid}>
-              <div style={styles.stepBox}>
-                <h3 style={styles.stepTitle}>1. Web Image Scraper</h3>
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                flexWrap: 'wrap',
+                marginBottom: 14,
+              }}
+            >
+              {(
+                [
+                  { id: 'scrape', label: '1. Web Image Scraper' },
+                  { id: 'clip', label: '2. CLIP Auto-Filter' },
+                  { id: 'label', label: '3. Labeling & Split' },
+                  { id: 'import', label: '4. Import WalnutData (30k)' },
+                ] as const
+              ).map((step) => (
+                <button
+                  key={step.id}
+                  type="button"
+                  style={{
+                    ...styles.pillSwitch,
+                    ...(pipelineStepTab === step.id
+                      ? styles.pillSwitchActive
+                      : {}),
+                  }}
+                  onClick={() => setPipelineStepTab(step.id)}
+                >
+                  {step.label}
+                </button>
+              ))}
+            </div>
+            <div>
+              {pipelineStepTab === 'scrape' && (
+              <div style={{ ...styles.stepBox, width: '100%', boxSizing: 'border-box' }}>
+                <h3 style={styles.stepTitle}>
+                  1. Web Image Scraper
+                  <WebHelpButton
+                    help={{
+                      title: '1. Web Image Scraper',
+                      whatItDoes:
+                        'Downloads walnut photos from web search engines into raw_scraped/ so you can build a training dataset.',
+                      howToDoIt: [
+                        'Select a category: choose "Canopy Walnuts" to scrape tree canopy & hull-split photos, "Ground Walnuts" for fallen harvest nuts, or "All Categories".',
+                        'Set the number box (Max Images per Search Query, default 40). For example, 40 downloads up to 40 photos for each search term in that category. Use 20 for a quick test or 60-100 for a larger dataset.',
+                        'Make sure your Python Backend Worker is online (Tab 4), then click "Run Scraper".',
+                      ],
+                      whatToExpect:
+                        'The "Raw Scraped" counter above will climb as images download (usually 1-3 minutes). Next, run Step 2 (CLIP Auto-Filter) to remove unrelated photos.',
+                    }}
+                  />
+                </h3>
                 <p style={styles.stepDesc}>
                   Collects ground walnuts & canopy hull-split / blight photos.
                 </p>
@@ -411,33 +707,651 @@ function AdminPortalApp({
                   </select>
                   <input
                     type="number"
+                    min={1}
+                    max={500}
+                    title="Max images per category per search engine"
+                    placeholder="40"
                     style={styles.numInput}
                     value={maxPerQuery}
-                    onChange={(e) =>
-                      setMaxPerQuery(Number(e.target.value) || 40)
-                    }
+                    onChange={(e) => setMaxPerQuery(e.target.value)}
+                    onBlur={() => {
+                      const parsed = parseInt(maxPerQuery, 10);
+                      setMaxPerQuery(
+                        Number.isFinite(parsed) && parsed > 0
+                          ? String(parsed)
+                          : '40'
+                      );
+                    }}
                   />
                 </div>
+                  <div
+                    style={{
+                      marginTop: 10,
+                      marginBottom: 8,
+                      padding: 10,
+                      borderRadius: 8,
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #CFE3C4',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => setQueriesExpanded((prev) => !prev)}
+                    >
+                      <strong style={{ fontSize: 12, color: '#294A1F' }}>
+                        Search Queries ({scrapeTarget} •{' '}
+                        {
+                          selectedQueries.filter((q) =>
+                            (scrapeTarget === 'all'
+                              ? ALL_SCRAPE_QUERIES
+                              : SCRAPE_QUERY_OPTIONS[scrapeTarget].flatMap(
+                                  (g) => g.queries
+                                )
+                            ).includes(q)
+                          ).length
+                        }{' '}
+                        selected)
+                      </strong>
+                      <div
+                        style={{ display: 'flex', gap: 6, alignItems: 'center' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {queriesExpanded && (
+                          <>
+                            <button
+                              type="button"
+                              style={{ ...styles.secondaryBtn, fontSize: 11, padding: '3px 8px' }}
+                              onClick={() => {
+                                const visible = (
+                                  scrapeTarget === 'all'
+                                    ? [...SCRAPE_QUERY_OPTIONS.ground, ...SCRAPE_QUERY_OPTIONS.canopy]
+                                    : SCRAPE_QUERY_OPTIONS[scrapeTarget]
+                                ).flatMap((g) => g.queries);
+                                setSelectedQueries((prev) =>
+                                  Array.from(new Set([...prev, ...visible]))
+                                );
+                              }}
+                            >
+                              Select All
+                            </button>
+                            <button
+                              type="button"
+                              style={{ ...styles.secondaryBtn, fontSize: 11, padding: '3px 8px' }}
+                              onClick={() => {
+                                const visible = new Set(
+                                  (scrapeTarget === 'all'
+                                    ? [...SCRAPE_QUERY_OPTIONS.ground, ...SCRAPE_QUERY_OPTIONS.canopy]
+                                    : SCRAPE_QUERY_OPTIONS[scrapeTarget]
+                                  ).flatMap((g) => g.queries)
+                                );
+                                setSelectedQueries((prev) =>
+                                  prev.filter((q) => !visible.has(q))
+                                );
+                              }}
+                            >
+                              Clear
+                            </button>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          style={{ ...styles.secondaryBtn, fontSize: 11, padding: '3px 8px' }}
+                          onClick={() => setQueriesExpanded((prev) => !prev)}
+                        >
+                          {queriesExpanded ? 'Hide ▲' : 'Show ▼'}
+                        </button>
+                      </div>
+                    </div>
+                    {queriesExpanded && (
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                          gap: 8,
+                          marginTop: 8,
+                        }}
+                      >
+                        {(scrapeTarget === 'all'
+                          ? [...SCRAPE_QUERY_OPTIONS.ground, ...SCRAPE_QUERY_OPTIONS.canopy]
+                          : SCRAPE_QUERY_OPTIONS[scrapeTarget]
+                        ).map((group) => (
+                          <div key={group.className} style={{ fontSize: 12 }}>
+                            <div style={{ fontWeight: 700, color: '#3E6B30', marginBottom: 4 }}>
+                              {group.label}
+                            </div>
+                            {group.queries.map((q) => {
+                              const checked = selectedQueries.includes(q);
+                              return (
+                                <label
+                                  key={q}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    marginBottom: 3,
+                                    cursor: 'pointer',
+                                    color: '#1A2616',
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() =>
+                                      setSelectedQueries((prev) =>
+                                        checked
+                                          ? prev.filter((item) => item !== q)
+                                          : [...prev, q]
+                                      )
+                                    }
+                                  />
+                                  <span>{q}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      marginBottom: 10,
+                      padding: 10,
+                      borderRadius: 8,
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #CFE3C4',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => setEnginesExpanded((prev) => !prev)}
+                    >
+                      <strong style={{ fontSize: 12, color: '#294A1F' }}>
+                        Search Sources ({selectedEngines.length}/
+                        {SCRAPE_ENGINE_OPTIONS.length} selected)
+                      </strong>
+                      <div
+                        style={{ display: 'flex', gap: 6, alignItems: 'center' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {enginesExpanded && (
+                          <>
+                            <button
+                              type="button"
+                              style={{ ...styles.secondaryBtn, fontSize: 11, padding: '3px 8px' }}
+                              onClick={() =>
+                                setSelectedEngines(
+                                  SCRAPE_ENGINE_OPTIONS.map((e) => e.id)
+                                )
+                              }
+                            >
+                              All Sources
+                            </button>
+                            <button
+                              type="button"
+                              style={{ ...styles.secondaryBtn, fontSize: 11, padding: '3px 8px' }}
+                              onClick={() => setSelectedEngines(['bing', 'ddg'])}
+                            >
+                              Reset Default
+                            </button>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          style={{ ...styles.secondaryBtn, fontSize: 11, padding: '3px 8px' }}
+                          onClick={() => setEnginesExpanded((prev) => !prev)}
+                        >
+                          {enginesExpanded ? 'Hide ▲' : 'Show ▼'}
+                        </button>
+                      </div>
+                    </div>
+                    {enginesExpanded && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: 10,
+                          fontSize: 12,
+                          marginTop: 8,
+                        }}
+                      >
+                        {SCRAPE_ENGINE_OPTIONS.map((eng) => {
+                          const checked = selectedEngines.includes(eng.id);
+                          return (
+                            <label
+                              key={eng.id}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                cursor: 'pointer',
+                                color: '#1A2616',
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() =>
+                                  setSelectedEngines((prev) =>
+                                    checked
+                                      ? prev.filter((item) => item !== eng.id)
+                                      : [...prev, eng.id]
+                                  )
+                                }
+                              />
+                              <span>{eng.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                <p
+                  style={{
+                    margin: '6px 0 8px',
+                    fontSize: 11,
+                    color: '#4A5D43',
+                  }}
+                >
+                  Default save location:{' '}
+                  <code>
+                    backend/yolo/dataset_builder/raw_scraped/&lt;target&gt;/&lt;class_name&gt;/
+                  </code>
+                </p>
                 <button
                   style={styles.primaryBtn}
-                  onClick={() =>
-                    runJob(
-                      '/api/jobs/scrape',
-                      {
-                        target: scrapeTarget,
-                        engine: 'all',
-                        max_per_query: maxPerQuery,
-                      },
-                      `Scrape ${scrapeTarget} images`
-                    )
-                  }
+                  onClick={() => {
+                    if (!scrapeOutputDir.trim()) {
+                      setScrapeOutputDir(defaultScrapeFolder);
+                    }
+                    setScrapeModalOpen(true);
+                  }}
                 >
                   Run Scraper
                 </button>
-              </div>
 
-              <div style={styles.stepBox}>
-                <h3 style={styles.stepTitle}>2. CLIP Auto-Filter</h3>
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: 12,
+                    borderRadius: 8,
+                    backgroundColor: '#F4F8F1',
+                    border: '1px solid #CFE3C4',
+                    fontSize: 12,
+                    width: '100%',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 4,
+                    }}
+                  >
+                    <strong style={{ color: '#294A1F' }}>
+                      Search Progress ({statusData?.job.status ?? 'IDLE'})
+                    </strong>
+                    <span style={{ color: '#538442', fontSize: 11 }}>
+                      {counts.rawScrapedTotal} images • Drag bottom-right corner to resize
+                    </span>
+                  </div>
+                  <div style={{ color: '#4A5D43', fontSize: 11, marginBottom: 6 }}>
+                    Save folder:{' '}
+                    <code>
+                      {statusData?.activeScrapeDir ||
+                        statusData?.defaultDownloadsDir ||
+                        'backend/yolo/dataset_builder/raw_scraped'}
+                    </code>
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      lineHeight: 1.45,
+                      color: '#1A2616',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E6F0E0',
+                      borderRadius: 6,
+                      padding: 10,
+                      minHeight: 160,
+                      height: 240,
+                      resize: 'vertical',
+                      overflowY: 'auto',
+                      overflowX: 'auto',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {(statusData?.job.logs ?? [])
+                      .filter((line) => line.includes('[Scraper]') || line.includes('START JOB') || line.includes('COMPLETED') || line.includes('FAILED'))
+                      .map((line, i) => (
+                        <div key={i}>{line}</div>
+                      ))}
+                    {(statusData?.job.logs ?? []).filter((line) =>
+                      line.includes('[Scraper]')
+                    ).length === 0 && (
+                      <div style={{ color: '#6B7D65' }}>
+                        Ready. Click &quot;Run Scraper&quot; to choose folder &amp; start.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {scrapeModalOpen && (
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    onClick={() => setScrapeModalOpen(false)}
+                    style={{
+                      position: 'fixed',
+                      inset: 0,
+                      backgroundColor: 'rgba(26, 38, 22, 0.45)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 16,
+                      zIndex: 9999,
+                    }}
+                  >
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: 14,
+                        border: '1px solid #CFE3C4',
+                        maxWidth: 460,
+                        width: '100%',
+                        padding: 20,
+                        boxShadow: '0 12px 32px rgba(26, 38, 22, 0.2)',
+                      }}
+                    >
+                      <h3 style={{ margin: '0 0 8px', fontSize: 16, color: '#294A1F' }}>
+                        Confirm Scraper Download Folder
+                      </h3>
+                      <p style={{ margin: '0 0 12px', fontSize: 13, color: '#4A5D43' }}>
+                        Images download by default to{' '}
+                        <code>
+                          backend/yolo/dataset_builder/raw_scraped/&lt;target&gt;/&lt;class_name&gt;/
+                        </code>{' '}
+                        (used automatically by Step 2 CLIP Auto-Filter), or you can enter a different folder path below.
+                      </p>
+                      <label style={styles.label}>Download Folder Path</label>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input
+                          style={{ ...styles.input, flex: 1, marginBottom: 0 }}
+                          value={scrapeOutputDir}
+                          placeholder={defaultScrapeFolder}
+                          onChange={(e) => setScrapeOutputDir(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          style={styles.secondaryBtn}
+                          onClick={() => {
+                            setFolderExplorerOpen(true);
+                            void loadExplorerPath(
+                              scrapeOutputDir.trim() || defaultScrapeFolder
+                            );
+                          }}
+                        >
+                          Browse Folders...
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          style={styles.secondaryBtn}
+                          onClick={() => setScrapeOutputDir(defaultScrapeFolder)}
+                        >
+                          Use Default Folder
+                        </button>
+                        <button
+                          type="button"
+                          style={styles.secondaryBtn}
+                          onClick={() => setScrapeModalOpen(false)}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          style={styles.primaryBtn}
+                          onClick={() => {
+                            setScrapeModalOpen(false);
+                            void runJob(
+                              '/api/jobs/scrape',
+                              {
+                                target: scrapeTarget,
+                                engine:
+                                  selectedEngines.length > 0
+                                    ? selectedEngines.join(',')
+                                    : 'bing,ddg',
+                                max_per_query: Math.max(
+                                  1,
+                                  parseInt(maxPerQuery, 10) || 40
+                                ),
+                                max_total: Math.max(
+                                  1,
+                                  parseInt(maxPerQuery, 10) || 40
+                                ),
+                                output_dir: scrapeOutputDir.trim(),
+                                selected_queries: selectedQueries.filter((q) =>
+                                  (scrapeTarget === 'all'
+                                    ? ALL_SCRAPE_QUERIES
+                                    : SCRAPE_QUERY_OPTIONS[scrapeTarget].flatMap(
+                                        (g) => g.queries
+                                      )
+                                  ).includes(q)
+                                ),
+                              },
+                              `Scrape ${scrapeTarget} images`
+                            );
+                          }}
+                        >
+                          Start Scraping
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {folderExplorerOpen && (
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    onClick={() => setFolderExplorerOpen(false)}
+                    style={{
+                      position: 'fixed',
+                      inset: 0,
+                      backgroundColor: 'rgba(26, 38, 22, 0.55)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 16,
+                      zIndex: 10000,
+                    }}
+                  >
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: 14,
+                        border: '1px solid #CFE3C4',
+                        maxWidth: 540,
+                        width: '100%',
+                        padding: 20,
+                        boxShadow: '0 14px 36px rgba(26, 38, 22, 0.25)',
+                      }}
+                    >
+                      <h3 style={{ margin: '0 0 8px', fontSize: 16, color: '#294A1F' }}>
+                        Select Download Directory
+                      </h3>
+
+                      {explorerError ? (
+                        <p style={{ fontSize: 13, color: '#9B1C1C', margin: '8px 0 12px' }}>
+                          {explorerError}
+                        </p>
+                      ) : (
+                        <>
+                          {explorerData?.shortcuts && (
+                            <div
+                              style={{
+                                display: 'flex',
+                                gap: 6,
+                                flexWrap: 'wrap',
+                                marginBottom: 10,
+                              }}
+                            >
+                              {explorerData.shortcuts.map((sc) => (
+                                <button
+                                  key={sc.path}
+                                  type="button"
+                                  style={{
+                                    ...styles.secondaryBtn,
+                                    fontSize: 11,
+                                    padding: '4px 8px',
+                                  }}
+                                  onClick={() => void loadExplorerPath(sc.path)}
+                                >
+                                  {sc.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              gap: 8,
+                              padding: '6px 10px',
+                              backgroundColor: '#F4F8F1',
+                              border: '1px solid #CFE3C4',
+                              borderRadius: 8,
+                              marginBottom: 8,
+                              fontSize: 12,
+                            }}
+                          >
+                            <code style={{ wordBreak: 'break-all' }}>
+                              {explorerData?.currentPath || 'Loading...'}
+                            </code>
+                            {explorerData?.parentPath && (
+                              <button
+                                type="button"
+                                style={{
+                                  ...styles.secondaryBtn,
+                                  fontSize: 11,
+                                  padding: '4px 8px',
+                                }}
+                                onClick={() =>
+                                  void loadExplorerPath(
+                                    explorerData.parentPath!
+                                  )
+                                }
+                              >
+                                Up (..)
+                              </button>
+                            )}
+                          </div>
+
+                          <div
+                            style={{
+                              maxHeight: 220,
+                              overflowY: 'auto',
+                              border: '1px solid #E6F0E0',
+                              borderRadius: 8,
+                              padding: 6,
+                              marginBottom: 12,
+                            }}
+                          >
+                            {(explorerData?.dirs ?? []).length === 0 ? (
+                              <div style={{ fontSize: 12, color: '#6B7D65', padding: 8 }}>
+                                No subfolders in this directory.
+                              </div>
+                            ) : (
+                              explorerData?.dirs.map((d) => (
+                                <button
+                                  key={d.path}
+                                  type="button"
+                                  onClick={() => void loadExplorerPath(d.path)}
+                                  style={{
+                                    display: 'block',
+                                    width: '100%',
+                                    textAlign: 'left',
+                                    padding: '6px 10px',
+                                    border: 'none',
+                                    backgroundColor: 'transparent',
+                                    cursor: 'pointer',
+                                    fontSize: 13,
+                                    color: '#1A2616',
+                                    borderRadius: 6,
+                                  }}
+                                >
+                                  📁 {d.name}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                        <button
+                          type="button"
+                          style={styles.secondaryBtn}
+                          onClick={() => setFolderExplorerOpen(false)}
+                        >
+                          Cancel
+                        </button>
+                        {explorerData?.currentPath && (
+                          <button
+                            type="button"
+                            style={styles.primaryBtn}
+                            onClick={() => {
+                              setScrapeOutputDir(explorerData.currentPath);
+                              setFolderExplorerOpen(false);
+                            }}
+                          >
+                            Select This Folder
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              )}
+
+              {pipelineStepTab === 'clip' && (
+              <div style={{ ...styles.stepBox, width: '100%', boxSizing: 'border-box' }}>
+                <h3 style={styles.stepTitle}>
+                  2. CLIP Auto-Filter
+                  <WebHelpButton
+                    help={{
+                      title: '2. CLIP Auto-Filter',
+                      whatItDoes:
+                        'Uses OpenAI CLIP to automatically score raw scraped photos and keep only real walnut canopy/ground images.',
+                      howToDoIt: [
+                        'Run Step 1 (Web Image Scraper) first so raw images exist.',
+                        'Click "Run CLIP Filter".',
+                      ],
+                      whatToExpect:
+                        'Valid orchard photos move to "CLIP Curated" and off-topic photos move to "CLIP Rejected". Review the live logs below for progress.',
+                    }}
+                  />
+                </h3>
                 <p style={styles.stepDesc}>
                   Removes non-orchard images and sorts valid walnut photos into
                   class folders.
@@ -454,10 +1368,32 @@ function AdminPortalApp({
                 >
                   Run CLIP Filter
                 </button>
+                {renderStepProgress(
+                  'CLIP Filter Progress',
+                  ['CLIP', '2_clip_filter'],
+                  'Ready. Click "Run CLIP Filter" to sort raw scraped images.'
+                )}
               </div>
+              )}
 
-              <div style={styles.stepBox}>
-                <h3 style={styles.stepTitle}>3. Labeling & Split</h3>
+              {pipelineStepTab === 'label' && (
+              <div style={{ ...styles.stepBox, width: '100%', boxSizing: 'border-box' }}>
+                <h3 style={styles.stepTitle}>
+                  3. Labeling & Split
+                  <WebHelpButton
+                    help={{
+                      title: '3. Labeling & Split',
+                      whatItDoes:
+                        'Opens labelImg to draw bounding boxes on curated walnut photos, then splits them 80% train / 15% val / 5% test for YOLO11.',
+                      howToDoIt: [
+                        'Click "Label Ground" or "Label Canopy" to annotate bounding boxes locally.',
+                        'Once labeled, click "Finalize Splits" to prepare the YOLO dataset.',
+                      ],
+                      whatToExpect:
+                        'The "Training Ready" counter updates with the total number of labeled images ready for YOLO11 training.',
+                    }}
+                  />
+                </h3>
                 <p style={styles.stepDesc}>
                   Launch <code>labelImg</code> or finalize 80/15/5 train/val/test
                   splits.
@@ -500,10 +1436,31 @@ function AdminPortalApp({
                 >
                   Finalize Splits
                 </button>
+                {renderStepProgress(
+                  'Labeling & Split Progress',
+                  ['labelImg', 'Splits', '3_prepare_for_labeling'],
+                  'Ready. Label images or click "Finalize Splits".'
+                )}
               </div>
+              )}
 
-              <div style={styles.stepBox}>
-                <h3 style={styles.stepTitle}>4. Import WalnutData (30k)</h3>
+              {pipelineStepTab === 'import' && (
+              <div style={{ ...styles.stepBox, width: '100%', boxSizing: 'border-box' }}>
+                <h3 style={styles.stepTitle}>
+                  4. Import WalnutData (30k)
+                  <WebHelpButton
+                    help={{
+                      title: '4. Import WalnutData (30k)',
+                      whatItDoes:
+                        'Imports the pre-labeled 1wuming/WalnutData dataset from a local folder or Hugging Face to boost training accuracy.',
+                      howToDoIt: [
+                        'Enter your local folder path and click "Import Local", or click "Download HF" to fetch directly from Hugging Face.',
+                      ],
+                      whatToExpect:
+                        'Up to 3,000 labeled walnut samples are remapped and added to your training-ready dataset.',
+                    }}
+                  />
+                </h3>
                 <p style={styles.stepDesc}>
                   Import <code>1wuming/WalnutData</code> from local folder or
                   Hugging Face.
@@ -549,13 +1506,35 @@ function AdminPortalApp({
                     Download HF
                   </button>
                 </div>
+                {renderStepProgress(
+                  'WalnutData Import Progress',
+                  ['WalnutData', '4_import_walnutdata'],
+                  'Ready. Import from local folder or Hugging Face.'
+                )}
               </div>
+              )}
             </div>
           </section>
 
           <section style={styles.card}>
             <div style={styles.rowBetween}>
-              <h2 style={styles.cardTitle}>YOLO11 Model Training</h2>
+              <h2 style={styles.cardTitle}>
+                YOLO11 Model Training
+                <WebHelpButton
+                  help={{
+                    title: 'YOLO11 Model Training',
+                    whatItDoes:
+                      'Trains the Canopy Counter (yolo11s), Ground Picker (yolo11n), or Health Classifier (yolo11n-cls) model on your Training Ready dataset.',
+                    howToDoIt: [
+                      'Ensure "Training Ready" > 0 from Steps 1-4.',
+                      'Choose "Run on VPS Docker" (local/server GPU) or "Run on Google Colab" (free/cloud GPU).',
+                      'Click the model button you want to train (e.g., Train Canopy Counter).',
+                    ],
+                    whatToExpect:
+                      'Training logs stream in the console below and export .pt weights upon completion.',
+                  }}
+                />
+              </h2>
               <div style={styles.row}>
                 <button
                   style={{
@@ -625,11 +1604,23 @@ function AdminPortalApp({
                 </div>
 
                 <pre style={styles.console}>
-                  {(
-                    statusData?.job.logs ?? [
-                      `[Worker Offline] Waiting for worker at ${workerUrl}`,
-                    ]
-                  ).join('\n')}
+                  {(() => {
+                    if (!workerOnline) {
+                      return `[Worker Offline] Waiting for worker at ${workerUrl}`;
+                    }
+                    const trainingLogs = (statusData?.job.logs ?? []).filter(
+                      (line) =>
+                        line.includes('Train ') ||
+                        line.includes('train.py') ||
+                        line.toLowerCase().includes('epoch') ||
+                        line.toLowerCase().includes('yolo11') ||
+                        line.toLowerCase().includes('ultralytics')
+                    );
+                    if (trainingLogs.length > 0) {
+                      return trainingLogs.join('\n');
+                    }
+                    return '[YOLO11 Training Console] Ready. Click a Train button above to stream training progress.';
+                  })()}
                 </pre>
               </>
             ) : (
@@ -873,20 +1864,76 @@ function AdminPortalApp({
   );
 }
 
+function ConvexPipelineLogger({
+  statusData,
+  scrapeTarget,
+  selectedEngines,
+}: {
+  statusData: PipelineStatusResponse | null;
+  scrapeTarget: string;
+  selectedEngines: string[];
+}) {
+  const { isAuthenticated } = useConvexAuth();
+  const savePipelineLog = useMutation(anyApi.logs.savePipelineLog);
+  const lastSavedKeyRef = useRef<string>('');
+
+  useEffect(() => {
+    const job = statusData?.job;
+    if (!isAuthenticated || !job || !job.activeJob) return;
+    if (job.status !== 'COMPLETED' && job.status !== 'FAILED') return;
+
+    const key = `${job.activeJob}:${job.finishedAt ?? job.startedAt ?? job.logs.length}`;
+    if (lastSavedKeyRef.current === key) return;
+    lastSavedKeyRef.current = key;
+
+    const lower = job.activeJob.toLowerCase();
+    const category = lower.includes('scrape')
+      ? 'scrape'
+      : lower.includes('clip')
+        ? 'clip'
+        : lower.includes('label') || lower.includes('split')
+          ? 'labeling'
+          : lower.includes('walnutdata')
+            ? 'import'
+            : 'training';
+
+    void savePipelineLog({
+      category,
+      jobName: job.activeJob,
+      status: job.status,
+      target: category === 'scrape' ? scrapeTarget : undefined,
+      engines: category === 'scrape' ? selectedEngines : undefined,
+      logs: job.logs,
+    }).catch((err) => {
+      console.warn('Convex pipeline log save failed:', err);
+    });
+  }, [
+    isAuthenticated,
+    statusData,
+    scrapeTarget,
+    selectedEngines,
+    savePipelineLog,
+  ]);
+
+  return null;
+}
+
 function ConvexSyncAdminRole({
   displayName,
 }: {
   displayName: string;
 }) {
+  const { isAuthenticated } = useConvexAuth();
   const syncUser = useMutation(anyApi.users.syncCurrentUser);
   useEffect(() => {
+    if (!isAuthenticated) return;
     syncUser({
       displayName,
       authProvider: 'google',
     }).catch((err) => {
       console.warn('Admin role sync failed:', err);
     });
-  }, [displayName, syncUser]);
+  }, [isAuthenticated, displayName, syncUser]);
   return null;
 }
 

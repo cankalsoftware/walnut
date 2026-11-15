@@ -18,7 +18,7 @@ import {
   useSignIn,
   useUser,
 } from '@clerk/expo';
-import { ConvexReactClient, useMutation } from 'convex/react';
+import { ConvexReactClient, useConvexAuth, useMutation } from 'convex/react';
 import { anyApi } from 'convex/server';
 import { ConvexProviderWithClerk } from 'convex/react-clerk';
 import {
@@ -153,6 +153,7 @@ function LiveClerkConvexStateProvider({
   children: React.ReactNode;
 }) {
   const { isSignedIn: clerkSignedIn, signOut } = useAuth();
+  const { isAuthenticated: convexAuthenticated } = useConvexAuth();
   const { user } = useUser();
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
   const { signIn } = useSignIn();
@@ -198,7 +199,7 @@ function LiveClerkConvexStateProvider({
   }, []);
 
   useEffect(() => {
-    if (isSignedIn && user) {
+    if (convexAuthenticated && isSignedIn && user) {
       syncUserMutation({
         displayName: user.fullName || user.firstName || 'Walnut Grower',
         authProvider: userProfile.authProvider,
@@ -206,7 +207,7 @@ function LiveClerkConvexStateProvider({
         console.warn('Convex user sync failed:', err);
       });
     }
-  }, [isSignedIn, user, userProfile.authProvider, syncUserMutation]);
+  }, [convexAuthenticated, isSignedIn, user, userProfile.authProvider, syncUserMutation]);
 
   const addOrchardTree = (name: string, variety: WalnutTree['variety']) => {
     const newTree: WalnutTree = {
@@ -418,10 +419,15 @@ function LiveClerkConvexStateProvider({
   );
 
   useEffect(() => {
-    if (isSignedIn && syncMode === 'auto' && pendingUploadCount > 0) {
+    if (
+      convexAuthenticated &&
+      isSignedIn &&
+      syncMode === 'auto' &&
+      pendingUploadCount > 0
+    ) {
       void syncPendingToConvex();
     }
-  }, [isSignedIn, syncMode, pendingUploadCount]);
+  }, [convexAuthenticated, isSignedIn, syncMode, pendingUploadCount]);
 
   const eligibleForPurgeCount = useMemo(() => {
     const check = purgeExpiredSyncedCache(localCache);
