@@ -20,10 +20,11 @@ web-app/.env
 web-app/.env.local
 web-app/.env.*.local
 
-# Internal licenses & research paper PDFs (for internal reference only, not publication)
+# Internal licenses, docs & research paper PDFs (for internal reference only, not publication)
 .licenses/
 .licences/
 research/papers/
+docs/
 
 # Native mobile build outputs
 android/
