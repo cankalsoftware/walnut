@@ -19,6 +19,11 @@ export default defineSchema({
     authProvider: v.union(v.literal('google'), v.literal('email')),
     region: v.optional(v.string()),
     orchardName: v.optional(v.string()),
+    experienceLevel: v.optional(
+      v.union(v.literal('beginner'), v.literal('experienced'), v.literal('expert'))
+    ),
+    notificationTopics: v.optional(v.array(v.string())),
+    pushNotificationsEnabled: v.optional(v.boolean()),
     createdAtMs: v.number(),
   })
     .index('by_clerk_id', ['clerkId'])
@@ -104,6 +109,7 @@ export default defineSchema({
     chillHoursTarget: v.number(),
     nitrogenCutoffMonthDay: v.string(),
     harvestHullSplitPct: v.number(),
+    dailyGuidanceNote: v.optional(v.string()),
     updatedByAdminAtMs: v.number(),
   }).index('by_key', ['key']),
 
@@ -193,5 +199,102 @@ export default defineSchema({
   })
     .index('by_category', ['category', 'createdAtMs'])
     .index('by_expires', ['expiresAtMs']),
+
+  // Expert walnut care & maintenance cards (editable/expandable by admin)
+  careCards: defineTable({
+    slug: v.string(),
+    title: v.string(),
+    season: v.union(
+      v.literal('spring'),
+      v.literal('summer'),
+      v.literal('fall'),
+      v.literal('winter'),
+      v.literal('all')
+    ),
+    category: v.string(), // blight_pest | fertilizing | irrigation | pruning | harvest | weather | seminars_expo | news
+    targetLevel: v.union(
+      v.literal('all'),
+      v.literal('beginner'),
+      v.literal('experienced'),
+      v.literal('expert')
+    ),
+    summary: v.string(),
+    actionChecklist: v.array(v.string()),
+    defaultNotificationTitle: v.string(),
+    defaultNotificationBody: v.string(),
+    createdAtMs: v.number(),
+    updatedAtMs: v.number(),
+  }).index('by_slug', ['slug']),
+
+  // Admin push & scheduled notifications to growers
+  careNotifications: defineTable({
+    title: v.string(),
+    body: v.string(),
+    category: v.string(),
+    targetAudience: v.union(
+      v.literal('all'),
+      v.literal('level'),
+      v.literal('selected_users')
+    ),
+    targetLevel: v.optional(
+      v.union(v.literal('beginner'), v.literal('experienced'), v.literal('expert'))
+    ),
+    targetUserIds: v.optional(v.array(v.string())),
+    status: v.union(
+      v.literal('sent'),
+      v.literal('scheduled'),
+      v.literal('cancelled')
+    ),
+    scheduledForMs: v.optional(v.number()),
+    sentAtMs: v.optional(v.number()),
+    createdAtMs: v.number(),
+  })
+    .index('by_status', ['status', 'createdAtMs'])
+    .index('by_created', ['createdAtMs']),
+
+  // Grouped Orchard Fields with 4-Quadrant Yield Sampling & Insurance Evidence Blobs
+  orchardFields: defineTable({
+    userId: v.string(),
+    localFieldId: v.string(),
+    name: v.string(),
+    variety: v.string(),
+    plantedYear: v.number(),
+    treeCount: v.number(),
+    areaHectares: v.number(),
+    canopyDensity: v.union(
+      v.literal('open'),
+      v.literal('standard'),
+      v.literal('dense')
+    ),
+    seasonYear: v.number(),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    treeSpacingMeters: v.optional(v.number()),
+    boundaryPins: v.optional(
+      v.array(
+        v.object({
+          latitude: v.number(),
+          longitude: v.number(),
+          label: v.optional(v.string()),
+        })
+      )
+    ),
+    fieldNote: v.optional(v.string()),
+    quadrants: v.array(
+      v.object({
+        quadrantId: v.string(),
+        allocatedTrees: v.optional(v.number()),
+        sampledTreeLabel: v.string(),
+        scannedNutsPerTree: v.number(),
+        estimatedWeightKgPerTree: v.number(),
+        note: v.string(),
+        evidenceStorageIds: v.optional(v.array(v.id('_storage'))),
+        updatedAtMs: v.number(),
+      })
+    ),
+    updatedAtMs: v.number(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_and_local_id', ['userId', 'localFieldId']),
 });
 

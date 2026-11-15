@@ -13,8 +13,42 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../src/theme/colors';
-import { useWalnutCloud } from '../src/providers/ConvexClerkProvider';
+import {
+  useWalnutCloud,
+  GrowerExperienceLevel,
+} from '../src/providers/ConvexClerkProvider';
 import { HelpButton } from '../src/components/HelpModal';
+
+const EXPERIENCE_LEVELS: {
+  id: GrowerExperienceLevel;
+  label: string;
+  desc: string;
+}[] = [
+  {
+    id: 'beginner',
+    label: 'Beginner',
+    desc: 'Step-by-step pruning, watering & seasonal reminders.',
+  },
+  {
+    id: 'experienced',
+    label: 'Experienced',
+    desc: 'Balanced seasonal care, blight alerts & harvest windows.',
+  },
+  {
+    id: 'expert',
+    label: 'Expert',
+    desc: 'SWP irrigation bars, chill hours, ethephon & R&D updates.',
+  },
+];
+
+const NOTIFICATION_TOPIC_OPTIONS = [
+  { id: 'weather', label: 'Weather Alerts' },
+  { id: 'fertilizing', label: 'Fertilizing Season' },
+  { id: 'blight_pest', label: 'Blight & Pests' },
+  { id: 'seminars_expo', label: 'Seminars & Expos' },
+  { id: 'maintenance', label: 'Pruning & Maintenance' },
+  { id: 'news', label: 'Community News' },
+];
 
 export default function GrowerAccountScreen() {
   const router = useRouter();
@@ -31,6 +65,7 @@ export default function GrowerAccountScreen() {
     signOutToOfflineMode,
     deleteAccountAndData,
     syncPendingToConvex,
+    updateGrowerPreferences,
   } = useWalnutCloud();
 
   const [emailInput, setEmailInput] = useState('');
@@ -224,6 +259,133 @@ export default function GrowerAccountScreen() {
             </View>
           </>
         )}
+
+        {/* Grower Care Level & Notification Preferences */}
+        <View style={styles.sectionCard}>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <Text style={styles.sectionTitle}>
+              Care Level & Notification Alerts
+            </Text>
+            <HelpButton
+              help={{
+                title: 'Care Level & Notification Alerts',
+                whatItDoes:
+                  'Lets you pick your walnut growing experience level (Beginner, Experienced, or Expert) and choose which seasonal care, weather, seminar, and expo updates you want to receive.',
+                howToDoIt: [
+                  'Tap Beginner, Experienced, or Expert to tailor guidance complexity.',
+                  'Toggle Push Alerts On/Off and tap topic chips (Weather, Fertilizing Season, Blight, Seminars & Expos, Maintenance, News).',
+                ],
+                whatToExpect:
+                  'Your preferences save immediately and sync to Convex so WalnutIQ admin broadcasts reach you with relevant updates.',
+              }}
+            />
+          </View>
+          <Text style={styles.sectionDesc}>
+            Choose your orchard experience tier and which WalnutIQ alerts you
+            want pushed to your phone.
+          </Text>
+
+          <Text style={styles.prefSubheading}>Experience Level</Text>
+          <View style={styles.levelRow}>
+            {EXPERIENCE_LEVELS.map((lvl) => {
+              const active = userProfile.experienceLevel === lvl.id;
+              return (
+                <TouchableOpacity
+                  key={lvl.id}
+                  style={[styles.levelBtn, active && styles.levelBtnActive]}
+                  onPress={() =>
+                    void updateGrowerPreferences({ experienceLevel: lvl.id })
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.levelBtnTitle,
+                      active && styles.levelBtnTitleActive,
+                    ]}
+                  >
+                    {lvl.label}
+                  </Text>
+                  <Text style={styles.levelBtnDesc}>{lvl.desc}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <View style={styles.pushToggleRow}>
+            <Text style={styles.prefSubheading}>
+              Notification Topics (
+              {userProfile.pushNotificationsEnabled ? 'Enabled' : 'Paused'})
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.pushPill,
+                userProfile.pushNotificationsEnabled && styles.pushPillActive,
+              ]}
+              onPress={() =>
+                void updateGrowerPreferences({
+                  pushNotificationsEnabled:
+                    !userProfile.pushNotificationsEnabled,
+                })
+              }
+            >
+              <Text
+                style={[
+                  styles.pushPillText,
+                  userProfile.pushNotificationsEnabled &&
+                    styles.pushPillTextActive,
+                ]}
+              >
+                {userProfile.pushNotificationsEnabled ? 'Alerts ON' : 'Paused'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.topicWrap}>
+            {NOTIFICATION_TOPIC_OPTIONS.map((topic) => {
+              const selected = userProfile.notificationTopics.includes(
+                topic.id
+              );
+              return (
+                <TouchableOpacity
+                  key={topic.id}
+                  style={[styles.topicChip, selected && styles.topicChipActive]}
+                  onPress={() => {
+                    const next = selected
+                      ? userProfile.notificationTopics.filter(
+                          (t) => t !== topic.id
+                        )
+                      : [...userProfile.notificationTopics, topic.id];
+                    void updateGrowerPreferences({ notificationTopics: next });
+                  }}
+                >
+                  <Ionicons
+                    name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={14}
+                    color={
+                      selected
+                        ? Colors.walnutGreen[800]
+                        : Colors.walnutShell[500]
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.topicChipText,
+                      selected && styles.topicChipTextActive,
+                    ]}
+                  >
+                    {topic.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
 
         {/* Orchard Backup Controls */}
         <View style={styles.sectionCard}>
@@ -553,5 +715,94 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: Colors.walnutShell[700],
+  },
+  prefSubheading: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.walnutGreen[900],
+    marginBottom: 8,
+  },
+  levelRow: {
+    gap: 8,
+    marginBottom: 14,
+  },
+  levelBtn: {
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.walnutShell[200],
+    backgroundColor: Colors.walnutShell[50],
+  },
+  levelBtnActive: {
+    borderColor: Colors.walnutGreen[700],
+    backgroundColor: Colors.walnutGreen[50],
+  },
+  levelBtnTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.walnutShell[700],
+    marginBottom: 2,
+  },
+  levelBtnTitleActive: {
+    color: Colors.walnutGreen[900],
+  },
+  levelBtnDesc: {
+    fontSize: 11,
+    color: Colors.walnutShell[500],
+  },
+  pushToggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  pushPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.walnutShell[200],
+    backgroundColor: Colors.walnutShell[100],
+  },
+  pushPillActive: {
+    borderColor: Colors.walnutGreen[700],
+    backgroundColor: Colors.walnutGreen[700],
+  },
+  pushPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.walnutShell[700],
+  },
+  pushPillTextActive: {
+    color: '#FFFFFF',
+  },
+  topicWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  topicChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.walnutShell[200],
+    backgroundColor: '#FFFFFF',
+  },
+  topicChipActive: {
+    borderColor: Colors.walnutGreen[600],
+    backgroundColor: Colors.walnutGreen[50],
+  },
+  topicChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.walnutShell[700],
+  },
+  topicChipTextActive: {
+    color: Colors.walnutGreen[900],
+    fontWeight: '800',
   },
 });

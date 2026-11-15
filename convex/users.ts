@@ -76,6 +76,98 @@ export const getUserRole = query({
   },
 });
 
+export const updateGrowerCarePreferences = mutation({
+  args: {
+    experienceLevel: v.union(
+      v.literal('beginner'),
+      v.literal('experienced'),
+      v.literal('expert')
+    ),
+    notificationTopics: v.array(v.string()),
+    pushNotificationsEnabled: v.boolean(),
+    region: v.optional(v.string()),
+    orchardName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Unauthorized: valid Clerk session required');
+    }
+
+    const existing = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+      .first();
+
+    if (!existing) {
+      const normalizedEmail = (identity.email ?? '').trim().toLowerCase();
+      const id = await ctx.db.insert('users', {
+        clerkId: identity.subject,
+        email: normalizedEmail,
+        displayName: identity.name ?? 'Walnut Grower',
+        role: normalizedEmail === ADMIN_EMAIL ? 'admin' : 'grower',
+        authProvider: 'email',
+        region: args.region,
+        orchardName: args.orchardName,
+        experienceLevel: args.experienceLevel,
+        notificationTopics: args.notificationTopics,
+        pushNotificationsEnabled: args.pushNotificationsEnabled,
+        createdAtMs: Date.now(),
+      });
+      return { id, updated: true };
+    }
+
+    await ctx.db.patch(existing._id, {
+      experienceLevel: args.experienceLevel,
+      notificationTopics: args.notificationTopics,
+      pushNotificationsEnabled: args.pushNotificationsEnabled,
+      ...(args.region !== undefined ? { region: args.region } : {}),
+      ...(args.orchardName !== undefined
+        ? { orchardName: args.orchardName }
+        : {}),
+    });
+    return { id: existing._id, updated: true };
+  },
+});
+
+export const listGrowersForAdmin = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+    const normalizedEmail = (identity.email ?? '').trim().toLowerCase();
+    const caller = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+      .first();
+    const isAdmin =
+      normalizedEmail === ADMIN_EMAIL || caller?.role === 'admin';
+    if (!isAdmin) {
+      return [];
+    }
+
+    const allUsers = await ctx.db.query('users').collect();
+    return allUsers.map((u) => ({
+      clerkId: u.clerkId,
+      displayName: u.displayName,
+      email: u.email,
+      experienceLevel: u.experienceLevel ?? 'experienced',
+      notificationTopics: u.notificationTopics ?? [
+        'weather',
+        'fertilizing',
+        'blight_pest',
+        'seminars_expo',
+        'maintenance',
+        'news',
+      ],
+      pushNotificationsEnabled: u.pushNotificationsEnabled ?? true,
+      region: u.region ?? '',
+    }));
+  },
+});
+
 /**
  * Google Play Store & GDPR compliance: deletes all Convex data owned by the
  * authenticated user (`identity.subject`), including community messages.

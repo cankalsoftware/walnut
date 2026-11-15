@@ -14,10 +14,14 @@ import LegalPages, {
   detectLegalRoute,
 } from './components/LegalPages';
 import { WebHelpButton } from './components/HelpModal';
+import {
+  MobileCareBroadcasts,
+  CareDefaultsPublishButton,
+} from './components/MobileCareBroadcasts';
 
 const ADMIN_EMAIL = 'pinarlik99@gmail.com';
 
-type AdminTab = 'setup' | 'training' | 'analytics' | 'endpoints' | 'shop';
+type AdminTab = 'setup' | 'training' | 'analytics' | 'shop';
 
 interface PipelineStatusResponse {
   job: {
@@ -284,6 +288,15 @@ function AdminPortalApp({
       return INITIAL_CARE_DEFAULTS;
     }
   });
+  const [careDraft, setCareDraft] = useState<{
+    irrigationIntervalDays: string;
+    targetSoilMoisturePct: string;
+    chillHoursTarget: string;
+  }>(() => ({
+    irrigationIntervalDays: String(careDefaults.irrigationIntervalDays),
+    targetSoilMoisturePct: String(careDefaults.targetSoilMoisturePct),
+    chillHoursTarget: String(careDefaults.chillHoursTarget),
+  }));
 
   // Background Worker Status & Dataset Counts
   const [workerOnline, setWorkerOnline] = useState(false);
@@ -328,7 +341,7 @@ function AdminPortalApp({
   } | null>(null);
   const [explorerError, setExplorerError] = useState<string | null>(null);
   const [walnutDataPath, setWalnutDataPath] = useState<string>('./WalnutData');
-  const [trainTarget, setTrainTarget] = useState<'vps' | 'colab'>('vps');
+  const [trainTarget, setTrainTarget] = useState<'vps' | 'colab'>('colab');
   const [notice, setNotice] = useState<string | null>(null);
   const [spinnerIdx, setSpinnerIdx] = useState(0);
 
@@ -583,21 +596,6 @@ function AdminPortalApp({
     }
   };
 
-  const saveCareDefaults = () => {
-    localStorage.setItem(STORAGE_CARE_KEY, JSON.stringify(careDefaults));
-    setNotice(
-      'Saved optimal Care Defaults. New and synced mobile growers receive these baseline values.'
-    );
-  };
-
-  const saveEndpoints = () => {
-    localStorage.setItem(STORAGE_WORKER_KEY, workerUrl.trim());
-    localStorage.setItem(STORAGE_TOKEN_KEY, workerToken.trim());
-    localStorage.setItem(STORAGE_COLAB_KEY, colabUrl.trim());
-    setNotice(`Saved worker endpoint (${workerUrl.trim()}) and links.`);
-    fetchWorkerStatus();
-  };
-
   const counts = statusData?.counts ?? {
     rawScrapedTotal: 0,
     curatedTotal: 0,
@@ -649,8 +647,7 @@ function AdminPortalApp({
             { id: 'setup', label: '1. Mobile Care Setup' },
             { id: 'training', label: '2. Dataset & Training' },
             { id: 'analytics', label: '3. Users & Analytics' },
-            { id: 'endpoints', label: '4. VPS & Links Setup' },
-            { id: 'shop', label: '5. Sensors & Switches Shop' },
+            { id: 'shop', label: '4. Sensors & Switches Shop' },
           ] as const
         ).map((tab) => (
           <button
@@ -670,6 +667,7 @@ function AdminPortalApp({
 
       {/* TAB 1: MOBILE CARE SETUP */}
       {activeTab === 'setup' && (
+        <>
         <section style={styles.card}>
           <h2 style={styles.cardTitle}>
             Optimal Walnut Care Defaults (Synced to Mobile App)
@@ -697,14 +695,37 @@ function AdminPortalApp({
               <label style={styles.label}>Default Watering Interval (Days)</label>
               <input
                 type="number"
+                min={1}
+                max={60}
+                step={1}
                 style={styles.input}
-                value={careDefaults.irrigationIntervalDays}
-                onChange={(e) =>
-                  setCareDefaults({
-                    ...careDefaults,
-                    irrigationIntervalDays: Number(e.target.value) || 7,
-                  })
-                }
+                value={careDraft.irrigationIntervalDays}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCareDraft((p) => ({ ...p, irrigationIntervalDays: val }));
+                  const parsed = parseInt(val, 10);
+                  if (Number.isFinite(parsed) && parsed > 0) {
+                    setCareDefaults((p) => ({
+                      ...p,
+                      irrigationIntervalDays: parsed,
+                    }));
+                  }
+                }}
+                onBlur={() => {
+                  const parsed = parseInt(careDraft.irrigationIntervalDays, 10);
+                  const safe =
+                    Number.isFinite(parsed) && parsed >= 1
+                      ? Math.min(60, parsed)
+                      : 7;
+                  setCareDraft((p) => ({
+                    ...p,
+                    irrigationIntervalDays: String(safe),
+                  }));
+                  setCareDefaults((p) => ({
+                    ...p,
+                    irrigationIntervalDays: safe,
+                  }));
+                }}
               />
             </div>
 
@@ -712,14 +733,37 @@ function AdminPortalApp({
               <label style={styles.label}>Target Soil Moisture (%)</label>
               <input
                 type="number"
+                min={10}
+                max={100}
+                step={1}
                 style={styles.input}
-                value={careDefaults.targetSoilMoisturePct}
-                onChange={(e) =>
-                  setCareDefaults({
-                    ...careDefaults,
-                    targetSoilMoisturePct: Number(e.target.value) || 65,
-                  })
-                }
+                value={careDraft.targetSoilMoisturePct}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCareDraft((p) => ({ ...p, targetSoilMoisturePct: val }));
+                  const parsed = parseInt(val, 10);
+                  if (Number.isFinite(parsed) && parsed > 0) {
+                    setCareDefaults((p) => ({
+                      ...p,
+                      targetSoilMoisturePct: parsed,
+                    }));
+                  }
+                }}
+                onBlur={() => {
+                  const parsed = parseInt(careDraft.targetSoilMoisturePct, 10);
+                  const safe =
+                    Number.isFinite(parsed) && parsed >= 10
+                      ? Math.min(100, parsed)
+                      : 65;
+                  setCareDraft((p) => ({
+                    ...p,
+                    targetSoilMoisturePct: String(safe),
+                  }));
+                  setCareDefaults((p) => ({
+                    ...p,
+                    targetSoilMoisturePct: safe,
+                  }));
+                }}
               />
             </div>
 
@@ -727,30 +771,82 @@ function AdminPortalApp({
               <label style={styles.label}>Winter Chill Target (Hours)</label>
               <input
                 type="number"
+                min={100}
+                max={2500}
+                step={25}
                 style={styles.input}
-                value={careDefaults.chillHoursTarget}
-                onChange={(e) =>
-                  setCareDefaults({
-                    ...careDefaults,
-                    chillHoursTarget: Number(e.target.value) || 800,
-                  })
-                }
+                value={careDraft.chillHoursTarget}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCareDraft((p) => ({ ...p, chillHoursTarget: val }));
+                  const parsed = parseInt(val, 10);
+                  if (Number.isFinite(parsed) && parsed > 0) {
+                    setCareDefaults((p) => ({
+                      ...p,
+                      chillHoursTarget: parsed,
+                    }));
+                  }
+                }}
+                onBlur={() => {
+                  const parsed = parseInt(careDraft.chillHoursTarget, 10);
+                  const safe =
+                    Number.isFinite(parsed) && parsed >= 100
+                      ? Math.min(2500, parsed)
+                      : 800;
+                  setCareDraft((p) => ({
+                    ...p,
+                    chillHoursTarget: String(safe),
+                  }));
+                  setCareDefaults((p) => ({
+                    ...p,
+                    chillHoursTarget: safe,
+                  }));
+                }}
               />
             </div>
 
             <div>
               <label style={styles.label}>Summer Nitrogen Cutoff</label>
-              <input
-                type="text"
-                style={styles.input}
-                value={careDefaults.nitrogenCutoffDate}
-                onChange={(e) =>
-                  setCareDefaults({
-                    ...careDefaults,
-                    nitrogenCutoffDate: e.target.value,
-                  })
-                }
-              />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="text"
+                  style={{ ...styles.input, flex: 1 }}
+                  value={careDefaults.nitrogenCutoffDate}
+                  onChange={(e) =>
+                    setCareDefaults({
+                      ...careDefaults,
+                      nitrogenCutoffDate: e.target.value,
+                    })
+                  }
+                  placeholder="e.g. July 1 or 2026-07-01"
+                />
+                <input
+                  type="date"
+                  aria-label="Pick Summer Nitrogen Cutoff Date"
+                  title="Pick cutoff date from calendar"
+                  style={{ ...styles.input, width: 150 }}
+                  value={
+                    /^\d{4}-\d{2}-\d{2}$/.test(careDefaults.nitrogenCutoffDate)
+                      ? careDefaults.nitrogenCutoffDate
+                      : ''
+                  }
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const d = new Date(`${e.target.value}T00:00:00`);
+                      const formatted = Number.isNaN(d.getTime())
+                        ? e.target.value
+                        : d.toLocaleDateString('en-US', {
+                            month: 'long',
+                            day: 'numeric',
+                          });
+                      setCareDefaults({
+                        ...careDefaults,
+                        nitrogenCutoffDate: formatted,
+                      });
+                    }
+                  }}
+                />
+              </div>
             </div>
           </div>
 
@@ -767,10 +863,26 @@ function AdminPortalApp({
             }
           />
 
-          <button style={styles.primaryBtn} onClick={saveCareDefaults}>
-            Save & Publish Care Defaults to Mobile App
-          </button>
+          <CareDefaultsPublishButton
+            hasConvex={hasConvex}
+            careDefaults={careDefaults}
+            onSaveLocal={() => {
+              localStorage.setItem(
+                STORAGE_CARE_KEY,
+                JSON.stringify(careDefaults)
+              );
+            }}
+            onNotice={setNotice}
+            style={styles.primaryBtn}
+          />
         </section>
+
+        <MobileCareBroadcasts
+          hasConvex={hasConvex}
+          onNotice={setNotice}
+          styles={styles}
+        />
+        </>
       )}
 
       {/* TAB 2: DATASET GATHERING, CLIP, LABELING & YOLO11 TRAINING */}
@@ -846,7 +958,7 @@ function AdminPortalApp({
                         'Select a category: "Ground Walnuts", "Canopy Walnuts", or "All Categories".',
                         'Set the number box (Max Images per Category per Engine, default 40). For example, 40 downloads up to 40 photos for each selected category from each selected search engine.',
                         'Optionally expand "Search Queries" and "Search Engines" to pick specific queries or engines (Bing, DuckDuckGo, Google, Yahoo, Yandex, Wikimedia, Instagram, Flickr), or set a custom Download Folder.',
-                        'Make sure your Python Backend Worker is online (Tab 4), then click "Run Scraper".',
+                        'Make sure your local Python Backend Worker is running (http://127.0.0.1:8000), then click "Run Scraper".',
                       ],
                       whatToExpect:
                         'Previous job logs clear on each new search, full scrollable logs stream below (and save to Convex for 30 days), and the "Raw Scraped" counter climbs as images download. Next, run Step 2 (CLIP Auto-Filter).',
@@ -2113,7 +2225,7 @@ function AdminPortalApp({
                       'Trains the Canopy Counter (yolo11s), Ground Picker (yolo11n), or Health Classifier (yolo11n-cls) model on your Training Ready dataset.',
                     howToDoIt: [
                       'Ensure "Training Ready" > 0 from Steps 1-4.',
-                      'Choose "Run on VPS Docker" (local/server GPU) or "Run on Google Colab" (free/cloud GPU).',
+                      'Choose "Run on Google Colab" (free/cloud GPU) or "Run on Local Worker" (your PC GPU/CPU).',
                       'Click the model button you want to train (e.g., Train Canopy Counter).',
                     ],
                     whatToExpect:
@@ -2129,7 +2241,7 @@ function AdminPortalApp({
                   }}
                   onClick={() => setTrainTarget('vps')}
                 >
-                  Run on VPS Docker
+                  Run on Local Worker
                 </button>
                 <button
                   style={{
@@ -2272,53 +2384,7 @@ function AdminPortalApp({
         </section>
       )}
 
-      {/* TAB 4: VPS WORKER & ENDPOINT LINKS SETUP */}
-      {activeTab === 'endpoints' && (
-        <section style={styles.card}>
-          <h2 style={styles.cardTitle}>
-            VPS Worker IP / Domain & Training Links Setup
-          </h2>
-          <p style={styles.cardDesc}>
-            Update your background worker URL, VPS IP, or Google Colab notebook
-            link anytime without redeploying the web app.
-          </p>
-
-          <label style={styles.label}>
-            Background ML Worker URL (Local PC or VPS HTTPS Domain)
-          </label>
-          <input
-            style={styles.input}
-            value={workerUrl}
-            onChange={(e) => setWorkerUrl(e.target.value)}
-            placeholder="https://ml-walnut.pinarlik.com or http://127.0.0.1:8000"
-          />
-
-          <label style={styles.label}>
-            Optional Admin Worker Token (x-admin-token)
-          </label>
-          <input
-            type="password"
-            style={styles.input}
-            value={workerToken}
-            onChange={(e) => setWorkerToken(e.target.value)}
-            placeholder="Matches ADMIN_WORKER_TOKEN on your VPS"
-          />
-
-          <label style={styles.label}>Google Colab Training Notebook URL</label>
-          <input
-            style={styles.input}
-            value={colabUrl}
-            onChange={(e) => setColabUrl(e.target.value)}
-            placeholder="https://colab.research.google.com/..."
-          />
-
-          <button style={styles.primaryBtn} onClick={saveEndpoints}>
-            Save Endpoint & Link Settings
-          </button>
-        </section>
-      )}
-
-      {/* TAB 5: SENSORS & SWITCHES SHOP */}
+      {/* TAB 4: SENSORS & SWITCHES SHOP */}
       {activeTab === 'shop' && (
         <ShopAdminTab
           hasConvex={hasConvex}

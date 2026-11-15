@@ -18,7 +18,7 @@ import {
   useSignIn,
   useUser,
 } from '@clerk/expo';
-import { ConvexReactClient, useConvexAuth, useMutation } from 'convex/react';
+import { ConvexReactClient, useConvexAuth, useMutation, useQuery } from 'convex/react';
 import { anyApi } from 'convex/server';
 import { ConvexProviderWithClerk } from 'convex/react-clerk';
 import {
@@ -33,6 +33,11 @@ import {
   markRecordsSyncedInSqlite,
   purgeExpiredSyncedInSqlite,
 } from '../services/sqliteCache';
+import {
+  BoundaryPin,
+  buildFieldSections,
+  DEFAULT_TREE_SPACING_METERS,
+} from '../utils/orchardGeometry';
 import { INITIAL_TREES, WalnutTree } from '../data/walnutLifecycle';
 import type { SyncAckResult } from '../../convex/sync';
 
@@ -58,6 +63,17 @@ export const clerkTokenCache = {
   },
 };
 
+export type GrowerExperienceLevel = 'beginner' | 'experienced' | 'expert';
+
+export const DEFAULT_NOTIFICATION_TOPICS = [
+  'weather',
+  'fertilizing',
+  'blight_pest',
+  'seminars_expo',
+  'maintenance',
+  'news',
+] as const;
+
 export interface GrowerUserProfile {
   clerkId: string;
   displayName: string;
@@ -65,6 +81,9 @@ export interface GrowerUserProfile {
   authProvider: 'google' | 'email';
   region: string;
   orchardName: string;
+  experienceLevel: GrowerExperienceLevel;
+  notificationTopics: string[];
+  pushNotificationsEnabled: boolean;
 }
 
 export interface OrchardCareSetup {
@@ -76,16 +95,154 @@ export interface OrchardCareSetup {
   isCustomizedByUser: boolean;
 }
 
-interface WalnutCloudContextValue {
+export type QuadrantId = string;
+
+export interface QuadrantSample {
+  quadrantId: QuadrantId;
+  allocatedTrees?: number;
+  sampledTreeLabel: string;
+  scannedNutsPerTree: number;
+  estimatedWeightKgPerTree: number;
+  note: string;
+  evidenceCount: number;
+  evidenceLocalUris: string[];
+  updatedAtMs: number;
+}
+
+export interface OrchardFieldBlock {
+  id: string;
+  name: string;
+  variety: WalnutTree['variety'];
+  plantedYear: number;
+  treeCount: number;
+  areaHectares: number;
+  canopyDensity: 'open' | 'standard' | 'dense';
+  seasonYear: number;
+  latitude?: number;
+  longitude?: number;
+  treeSpacingMeters?: number;
+  boundaryPins?: BoundaryPin[];
+  fieldNote: string;
+  quadrants: QuadrantSample[];
+}
+
+export interface CareFeedItem {
+  _id: string;
+  title: string;
+  body: string;
+  category: string;
+  createdAtMs: number;
+}
+
+const makeDefaultQuadrants = (seedNuts = 0): QuadrantSample[] => [
+  {
+    quadrantId: 'NW',
+    sampledTreeLabel: 'NW Sample Tree #1',
+    scannedNutsPerTree: seedNuts,
+    estimatedWeightKgPerTree: Number((seedNuts * 0.013).toFixed(1)),
+    note: '',
+    evidenceCount: 0,
+    evidenceLocalUris: [],
+    updatedAtMs: Date.now(),
+  },
+  {
+    quadrantId: 'NE',
+    sampledTreeLabel: 'NE Sample Tree #1',
+    scannedNutsPerTree: seedNuts > 0 ? seedNuts + 18 : 0,
+    estimatedWeightKgPerTree: Number(((seedNuts > 0 ? seedNuts + 18 : 0) * 0.013).toFixed(1)),
+    note: '',
+    evidenceCount: 0,
+    evidenceLocalUris: [],
+    updatedAtMs: Date.now(),
+  },
+  {
+    quadrantId: 'SW',
+    sampledTreeLabel: 'SW Sample Tree #1',
+    scannedNutsPerTree: seedNuts > 0 ? Math.max(0, seedNuts - 12) : 0,
+    estimatedWeightKgPerTree: Number((Math.max(0, seedNuts > 0 ? seedNuts - 12 : 0) * 0.013).toFixed(1)),
+    note: '',
+    evidenceCount: 0,
+    evidenceLocalUris: [],
+    updatedAtMs: Date.now(),
+  },
+  {
+    quadrantId: 'SE',
+    sampledTreeLabel: 'SE Sample Tree #1',
+    scannedNutsPerTree: seedNuts > 0 ? seedNuts + 6 : 0,
+    estimatedWeightKgPerTree: Number(((seedNuts > 0 ? seedNuts + 6 : 0) * 0.013).toFixed(1)),
+    note: '',
+    evidenceCount: 0,
+    evidenceLocalUris: [],
+    updatedAtMs: Date.now(),
+  },
+];
+
+const INITIAL_FIELDS: OrchardFieldBlock[] = [
+  {
+    id: 'field-north-01',
+    name: 'North Block • Main Chandler',
+    variety: 'Chandler',
+    plantedYear: 2019,
+    treeCount: 120,
+    areaHectares: 2.5,
+    canopyDensity: 'standard',
+    seasonYear: new Date().getFullYear(),
+    latitude: 38.5449,
+    longitude: -121.7405,
+    fieldNote: 'Drip irrigated • 4-quadrant annual yield baseline',
+    quadrants: makeDefaultQuadrants(410),
+  },
+  {
+    id: 'field-south-02',
+    name: 'South Slope • Howard Mix',
+    variety: 'Howard',
+    plantedYear: 2021,
+    treeCount: 85,
+    areaHectares: 1.8,
+    canopyDensity: 'open',
+    seasonYear: new Date().getFullYear(),
+    latitude: 38.5412,
+    longitude: -121.7378,
+    fieldNote: 'Young canopy • watch spring blight moisture',
+    quadrants: makeDefaultQuadrants(265),
+  },
+];
+
+export interface WalnutCloudContextValue {
   isCloudConfigured: boolean;
   isSignedIn: boolean;
   isOnlineSyncReady: boolean;
   userProfile: GrowerUserProfile;
   trees: WalnutTree[];
   addOrchardTree: (name: string, variety: WalnutTree['variety']) => void;
+  fields: OrchardFieldBlock[];
+  addOrchardField: (
+    field: Omit<OrchardFieldBlock, 'id' | 'quadrants'>
+  ) => Promise<string>;
+  updateOrchardField: (
+    fieldId: string,
+    patch: Partial<Omit<OrchardFieldBlock, 'id'>>
+  ) => Promise<void>;
+  updateQuadrantSample: (
+    fieldId: string,
+    quadrantId: QuadrantId,
+    patch: Partial<QuadrantSample>
+  ) => Promise<void>;
+  attachQuadrantEvidenceBlob: (
+    fieldId: string,
+    quadrantId: QuadrantId,
+    photoUri: string
+  ) => Promise<void>;
   careSetup: OrchardCareSetup;
   updateCareSetup: (patch: Partial<OrchardCareSetup>) => void;
   resetCareSetupToDefaults: () => void;
+  updateGrowerPreferences: (patch: {
+    experienceLevel?: GrowerExperienceLevel;
+    notificationTopics?: string[];
+    pushNotificationsEnabled?: boolean;
+  }) => Promise<void>;
+  publishedCareBanner: string | null;
+  careFeed: CareFeedItem[];
   localCache: LocalCachedRecord[];
   syncMode: 'auto' | 'manual';
   setSyncMode: (mode: 'auto' | 'manual') => void;
@@ -125,6 +282,9 @@ const DEFAULT_PROFILE: GrowerUserProfile = {
   authProvider: 'google',
   region: 'Central Valley / Zone 8b',
   orchardName: 'My Walnut Orchard',
+  experienceLevel: 'experienced',
+  notificationTopics: [...DEFAULT_NOTIFICATION_TOPICS],
+  pushNotificationsEnabled: true,
 };
 
 const WalnutCloudContext = createContext<WalnutCloudContextValue | undefined>(
@@ -159,10 +319,30 @@ function LiveClerkConvexStateProvider({
   const { signIn } = useSignIn();
 
   const syncUserMutation = useMutation(anyApi.users.syncCurrentUser);
+  const updateCarePreferencesMutation = useMutation(
+    anyApi.users.updateGrowerCarePreferences
+  );
   const deleteAccountMutation = useMutation(anyApi.users.deleteMyAccountData);
   const syncOfflineBatchMutation = useMutation(anyApi.sync.syncOfflineBatch);
+  const upsertFieldMutation = useMutation(
+    anyApi.orchardFields.upsertOrchardField
+  );
+  const generateEvidenceUrlMutation = useMutation(
+    anyApi.orchardFields.generateEvidenceUploadUrl
+  );
+  const attachEvidenceMutation = useMutation(
+    anyApi.orchardFields.attachQuadrantEvidence
+  );
+  const liveCareDefaults = useQuery(anyApi.careBroadcasts.getCareDefaults) as
+    | { dailyGuidanceNote?: string }
+    | null
+    | undefined;
+  const liveCareFeed = useQuery(anyApi.careBroadcasts.listMyCareFeed) as
+    | CareFeedItem[]
+    | undefined;
 
   const [trees, setTrees] = useState<WalnutTree[]>(INITIAL_TREES);
+  const [fields, setFields] = useState<OrchardFieldBlock[]>(INITIAL_FIELDS);
   const [localCache, setLocalCache] = useState<LocalCachedRecord[]>(() =>
     loadOfflineCacheFromSqlite()
   );
@@ -170,11 +350,25 @@ function LiveClerkConvexStateProvider({
   const [lastSyncMessage, setLastSyncMessage] = useState<string | null>(null);
   const [careSetup, setCareSetup] =
     useState<OrchardCareSetup>(DEFAULT_CARE_SETUP);
+  const [experienceLevel, setExperienceLevel] =
+    useState<GrowerExperienceLevel>('experienced');
+  const [notificationTopics, setNotificationTopics] = useState<string[]>([
+    ...DEFAULT_NOTIFICATION_TOPICS,
+  ]);
+  const [pushNotificationsEnabled, setPushNotificationsEnabled] =
+    useState<boolean>(true);
 
   const isSignedIn = Boolean(clerkSignedIn);
 
   const userProfile: GrowerUserProfile = useMemo(() => {
-    if (!user) return DEFAULT_PROFILE;
+    if (!user) {
+      return {
+        ...DEFAULT_PROFILE,
+        experienceLevel,
+        notificationTopics,
+        pushNotificationsEnabled,
+      };
+    }
     const email =
       user.primaryEmailAddress?.emailAddress || 'grower@walnutiq.app';
     const name = user.fullName || user.firstName || email.split('@')[0];
@@ -188,8 +382,17 @@ function LiveClerkConvexStateProvider({
       authProvider: hasGoogle ? 'google' : 'email',
       region: careSetup.locationZone,
       orchardName: `${name}'s Walnut Orchard`,
+      experienceLevel,
+      notificationTopics,
+      pushNotificationsEnabled,
     };
-  }, [user, careSetup.locationZone]);
+  }, [
+    user,
+    careSetup.locationZone,
+    experienceLevel,
+    notificationTopics,
+    pushNotificationsEnabled,
+  ]);
 
   useEffect(() => {
     const result = purgeExpiredSyncedInSqlite(Date.now());
@@ -434,6 +637,193 @@ function LiveClerkConvexStateProvider({
     return check.purgedCount;
   }, [localCache]);
 
+  const updateGrowerPreferences = async (patch: {
+    experienceLevel?: GrowerExperienceLevel;
+    notificationTopics?: string[];
+    pushNotificationsEnabled?: boolean;
+  }) => {
+    const nextLevel = patch.experienceLevel ?? experienceLevel;
+    const nextTopics = patch.notificationTopics ?? notificationTopics;
+    const nextPush =
+      patch.pushNotificationsEnabled ?? pushNotificationsEnabled;
+
+    setExperienceLevel(nextLevel);
+    setNotificationTopics(nextTopics);
+    setPushNotificationsEnabled(nextPush);
+
+    if (convexAuthenticated && isSignedIn) {
+      try {
+        await updateCarePreferencesMutation({
+          experienceLevel: nextLevel,
+          notificationTopics: nextTopics,
+          pushNotificationsEnabled: nextPush,
+          region: careSetup.locationZone,
+          orchardName: userProfile.orchardName,
+        });
+        setLastSyncMessage(
+          `Saved ${nextLevel.toUpperCase()} care & notification preferences to cloud.`
+        );
+      } catch (err) {
+        console.warn('Failed to sync grower preferences:', err);
+      }
+    } else {
+      setLastSyncMessage(
+        `Saved ${nextLevel.toUpperCase()} care preferences locally (will sync when signed in).`
+      );
+    }
+  };
+
+  const syncFieldToConvex = async (field: OrchardFieldBlock) => {
+    if (!convexAuthenticated || !isSignedIn) return;
+    try {
+      await upsertFieldMutation({
+        localFieldId: field.id,
+        name: field.name,
+        variety: field.variety,
+        plantedYear: field.plantedYear,
+        treeCount: field.treeCount,
+        areaHectares: field.areaHectares,
+        canopyDensity: field.canopyDensity,
+        seasonYear: field.seasonYear,
+        latitude: field.latitude,
+        longitude: field.longitude,
+        treeSpacingMeters: field.treeSpacingMeters ?? DEFAULT_TREE_SPACING_METERS,
+        boundaryPins: field.boundaryPins,
+        fieldNote: field.fieldNote,
+        quadrants: field.quadrants.map((q) => ({
+          quadrantId: q.quadrantId,
+          allocatedTrees: q.allocatedTrees,
+          sampledTreeLabel: q.sampledTreeLabel,
+          scannedNutsPerTree: q.scannedNutsPerTree,
+          estimatedWeightKgPerTree: q.estimatedWeightKgPerTree,
+          note: q.note,
+          updatedAtMs: q.updatedAtMs,
+        })),
+      });
+    } catch (err) {
+      console.warn('Convex field sync failed:', err);
+    }
+  };
+
+  const addOrchardField = async (
+    field: Omit<OrchardFieldBlock, 'id' | 'quadrants'>
+  ) => {
+    const newField: OrchardFieldBlock = {
+      ...field,
+      id: `field-${Date.now()}`,
+      treeSpacingMeters: field.treeSpacingMeters ?? DEFAULT_TREE_SPACING_METERS,
+      quadrants: buildFieldSections(field.treeCount, makeDefaultQuadrants(0)),
+    };
+    setFields((prev) => [newField, ...prev]);
+    await syncFieldToConvex(newField);
+    return newField.id;
+  };
+
+  const updateOrchardField = async (
+    fieldId: string,
+    patch: Partial<Omit<OrchardFieldBlock, 'id'>>
+  ) => {
+    let updatedField: OrchardFieldBlock | null = null;
+    setFields((prev) =>
+      prev.map((f) => {
+        if (f.id !== fieldId) return f;
+        const nextTreeCount = patch.treeCount ?? f.treeCount;
+        const nextQuadrants =
+          patch.quadrants ??
+          (patch.treeCount !== undefined
+            ? buildFieldSections(nextTreeCount, f.quadrants)
+            : f.quadrants);
+        updatedField = { ...f, ...patch, quadrants: nextQuadrants };
+        return updatedField;
+      })
+    );
+    if (updatedField) {
+      await syncFieldToConvex(updatedField);
+    }
+  };
+
+  const updateQuadrantSample = async (
+    fieldId: string,
+    quadrantId: QuadrantId,
+    patch: Partial<QuadrantSample>
+  ) => {
+    let updatedField: OrchardFieldBlock | null = null;
+    setFields((prev) =>
+      prev.map((f) => {
+        if (f.id !== fieldId) return f;
+        updatedField = {
+          ...f,
+          quadrants: f.quadrants.map((q) =>
+            q.quadrantId === quadrantId
+              ? { ...q, ...patch, updatedAtMs: Date.now() }
+              : q
+          ),
+        };
+        return updatedField;
+      })
+    );
+    if (updatedField) {
+      await syncFieldToConvex(updatedField);
+    }
+  };
+
+  const attachQuadrantEvidenceBlob = async (
+    fieldId: string,
+    quadrantId: QuadrantId,
+    photoUri: string
+  ) => {
+    setFields((prev) =>
+      prev.map((f) =>
+        f.id !== fieldId
+          ? f
+          : {
+              ...f,
+              quadrants: f.quadrants.map((q) =>
+                q.quadrantId === quadrantId
+                  ? {
+                      ...q,
+                      evidenceCount: q.evidenceCount + 1,
+                      evidenceLocalUris: [...q.evidenceLocalUris, photoUri],
+                      updatedAtMs: Date.now(),
+                    }
+                  : q
+              ),
+            }
+      )
+    );
+    addOfflineFieldRecord(
+      'YOLO_SCAN',
+      `Insurance Evidence Blob • ${fieldId} (${quadrantId})`,
+      1850
+    );
+
+    if (convexAuthenticated && isSignedIn) {
+      try {
+        const uploadUrl = await generateEvidenceUrlMutation({});
+        const fileResp = await fetch(photoUri);
+        const blob = await fileResp.blob();
+        const postResp = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': blob.type || 'image/jpeg' },
+          body: blob,
+        });
+        const json = await postResp.json();
+        if (json?.storageId) {
+          await attachEvidenceMutation({
+            localFieldId: fieldId,
+            quadrantId,
+            storageId: json.storageId,
+          });
+          setLastSyncMessage(
+            `Uploaded insurance evidence photo blob for ${quadrantId}.`
+          );
+        }
+      } catch (err) {
+        console.warn('Evidence blob upload queued locally:', err);
+      }
+    }
+  };
+
   const contextValue: WalnutCloudContextValue = {
     isCloudConfigured: true,
     isSignedIn,
@@ -441,9 +831,17 @@ function LiveClerkConvexStateProvider({
     userProfile,
     trees,
     addOrchardTree,
+    fields,
+    addOrchardField,
+    updateOrchardField,
+    updateQuadrantSample,
+    attachQuadrantEvidenceBlob,
     careSetup,
     updateCareSetup,
     resetCareSetupToDefaults,
+    updateGrowerPreferences,
+    publishedCareBanner: liveCareDefaults?.dailyGuidanceNote?.trim() || null,
+    careFeed: liveCareFeed ?? [],
     localCache,
     syncMode,
     setSyncMode,
@@ -478,6 +876,7 @@ function FallbackLocalStateProvider({
   const [userProfile, setUserProfile] =
     useState<GrowerUserProfile>(DEFAULT_PROFILE);
   const [trees, setTrees] = useState<WalnutTree[]>(INITIAL_TREES);
+  const [fields, setFields] = useState<OrchardFieldBlock[]>(INITIAL_FIELDS);
   const [localCache, setLocalCache] = useState<LocalCachedRecord[]>(() =>
     loadOfflineCacheFromSqlite()
   );
@@ -506,6 +905,21 @@ function FallbackLocalStateProvider({
     ]);
   };
 
+  const updateGrowerPreferences = async (patch: {
+    experienceLevel?: GrowerExperienceLevel;
+    notificationTopics?: string[];
+    pushNotificationsEnabled?: boolean;
+  }) => {
+    setUserProfile((prev) => ({
+      ...prev,
+      experienceLevel: patch.experienceLevel ?? prev.experienceLevel,
+      notificationTopics: patch.notificationTopics ?? prev.notificationTopics,
+      pushNotificationsEnabled:
+        patch.pushNotificationsEnabled ?? prev.pushNotificationsEnabled,
+    }));
+    setLastSyncMessage('Updated local grower experience & notification settings.');
+  };
+
   const contextValue: WalnutCloudContextValue = {
     isCloudConfigured: false,
     isSignedIn,
@@ -513,10 +927,84 @@ function FallbackLocalStateProvider({
     userProfile,
     trees,
     addOrchardTree,
+    fields,
+    addOrchardField: async (field) => {
+      const id = `field-${Date.now()}`;
+      setFields((prev) => [
+        {
+          ...field,
+          id,
+          treeSpacingMeters:
+            field.treeCount > 0
+              ? field.treeSpacingMeters ?? DEFAULT_TREE_SPACING_METERS
+              : DEFAULT_TREE_SPACING_METERS,
+          quadrants: buildFieldSections(
+            field.treeCount,
+            makeDefaultQuadrants(0)
+          ),
+        },
+        ...prev,
+      ]);
+      return id;
+    },
+    updateOrchardField: async (fieldId, patch) => {
+      setFields((prev) =>
+        prev.map((f) => {
+          if (f.id !== fieldId) return f;
+          const nextTreeCount = patch.treeCount ?? f.treeCount;
+          const nextQuadrants =
+            patch.quadrants ??
+            (patch.treeCount !== undefined
+              ? buildFieldSections(nextTreeCount, f.quadrants)
+              : f.quadrants);
+          return { ...f, ...patch, quadrants: nextQuadrants };
+        })
+      );
+    },
+    updateQuadrantSample: async (fieldId, quadrantId, patch) => {
+      setFields((prev) =>
+        prev.map((f) =>
+          f.id !== fieldId
+            ? f
+            : {
+                ...f,
+                quadrants: f.quadrants.map((q) =>
+                  q.quadrantId === quadrantId
+                    ? { ...q, ...patch, updatedAtMs: Date.now() }
+                    : q
+                ),
+              }
+        )
+      );
+    },
+    attachQuadrantEvidenceBlob: async (fieldId, quadrantId, photoUri) => {
+      setFields((prev) =>
+        prev.map((f) =>
+          f.id !== fieldId
+            ? f
+            : {
+                ...f,
+                quadrants: f.quadrants.map((q) =>
+                  q.quadrantId === quadrantId
+                    ? {
+                        ...q,
+                        evidenceCount: q.evidenceCount + 1,
+                        evidenceLocalUris: [...q.evidenceLocalUris, photoUri],
+                        updatedAtMs: Date.now(),
+                      }
+                    : q
+                ),
+              }
+        )
+      );
+    },
     careSetup,
     updateCareSetup: (patch) =>
       setCareSetup((prev) => ({ ...prev, ...patch, isCustomizedByUser: true })),
     resetCareSetupToDefaults: () => setCareSetup(DEFAULT_CARE_SETUP),
+    updateGrowerPreferences,
+    publishedCareBanner: null,
+    careFeed: [],
     localCache,
     syncMode,
     setSyncMode,

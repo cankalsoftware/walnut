@@ -20,11 +20,18 @@ import {
 } from '../../src/data/walnutLifecycle';
 import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
 import { HelpButton } from '../../src/components/HelpModal';
+import { OrchardFieldsSection } from '../../src/components/OrchardFieldsSection';
 
 export default function OrchardDashboardScreen() {
   const router = useRouter();
-  const { isSignedIn, trees, addOrchardTree, careSetup, userProfile } =
-    useWalnutCloud();
+  const {
+    isSignedIn,
+    trees,
+    careSetup,
+    userProfile,
+    publishedCareBanner,
+    careFeed,
+  } = useWalnutCloud();
   const [tasks, setTasks] = useState(INITIAL_CARE_TASKS.slice(0, 2));
   const [activePopup, setActivePopup] = useState<'daily' | 'weekly' | null>(null);
 
@@ -133,6 +140,43 @@ export default function OrchardDashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {publishedCareBanner && (
+          <View style={styles.guidanceBanner}>
+            <View style={styles.guidanceBannerHeader}>
+              <Ionicons
+                name="megaphone-outline"
+                size={16}
+                color={Colors.walnutGreen[900]}
+              />
+              <Text style={styles.guidanceBannerTitle}>
+                Daily Orchard Guidance
+              </Text>
+            </View>
+            <Text style={styles.guidanceBannerBody}>{publishedCareBanner}</Text>
+          </View>
+        )}
+
+        {careFeed.length > 0 && (
+          <View style={styles.alertFeedCard}>
+            <View style={styles.guidanceBannerHeader}>
+              <Ionicons
+                name="notifications-outline"
+                size={15}
+                color={Colors.walnutShell[700]}
+              />
+              <Text style={styles.alertFeedHeader}>
+                Latest Orchard Alerts ({careFeed.length})
+              </Text>
+            </View>
+            {careFeed.slice(0, 3).map((item) => (
+              <View key={item._id} style={styles.alertFeedItem}>
+                <Text style={styles.alertFeedTitle}>{item.title}</Text>
+                <Text style={styles.alertFeedBody}>{item.body}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Demo Mode Banner for Signed-Out Users */}
         {!isSignedIn && (
@@ -355,62 +399,8 @@ export default function OrchardDashboardScreen() {
           </TouchableOpacity>
         ))}
 
-        {/* Registered Walnut Trees */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {isSignedIn ? 'My Walnut Trees' : 'Demo Walnut Trees'}
-          </Text>
-          <TouchableOpacity
-            onPress={() => {
-              if (!isSignedIn) {
-                router.push('/auth');
-              } else {
-                addOrchardTree(
-                  `Tree #0${trees.length + 1} • New Orchard Area`,
-                  'Chandler'
-                );
-              }
-            }}
-          >
-            <Text style={styles.sectionLink}>
-              {isSignedIn ? '+ Add Area / Tree' : 'Sign in to Add →'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        {trees.map((tree) => (
-          <View key={tree.id} style={styles.treeCard}>
-            <View style={styles.treeCardHeader}>
-              <View>
-                <Text style={styles.treeName}>{tree.name}</Text>
-                <Text style={styles.treeMeta}>
-                  Variety: {tree.variety} • Planted {tree.plantedYear} •{' '}
-                  {tree.canopyDensity.toUpperCase()} Canopy
-                </Text>
-              </View>
-              <View style={styles.healthBadge}>
-                <Text style={styles.healthBadgeText}>
-                  {tree.healthScore}% Health
-                </Text>
-              </View>
-            </View>
-            <View style={styles.treeMetricsGrid}>
-              <View style={styles.metricPill}>
-                <Text style={styles.metricLabel}>Frame Count</Text>
-                <Text style={styles.metricValue}>{tree.lastCanopyCount}</Text>
-              </View>
-              <View style={styles.metricPill}>
-                <Text style={styles.metricLabel}>Est. Tree Yield</Text>
-                <Text style={styles.metricValue}>
-                  {tree.estimatedTotalNuts} ({tree.estimatedWeightKg} kg)
-                </Text>
-              </View>
-              <View style={styles.metricPill}>
-                <Text style={styles.metricLabel}>Avg Size</Text>
-                <Text style={styles.metricValue}>{tree.avgNutDiameterMm} mm</Text>
-              </View>
-            </View>
-          </View>
-        ))}
+        {/* Grouped Orchard Fields, 4-Quadrant Sampling & Insurance Evidence */}
+        <OrchardFieldsSection />
 
         {/* Legal & Google Play Safety Footer */}
         <TouchableOpacity
@@ -1132,5 +1122,58 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  guidanceBanner: {
+    backgroundColor: Colors.walnutGreen[100],
+    borderWidth: 1,
+    borderColor: Colors.walnutGreen[300],
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+  },
+  guidanceBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  guidanceBannerTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.walnutGreen[900],
+  },
+  guidanceBannerBody: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.walnutGreen[900],
+  },
+  alertFeedCard: {
+    backgroundColor: Colors.walnutShell[50],
+    borderWidth: 1,
+    borderColor: Colors.walnutShell[200],
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+    gap: 6,
+  },
+  alertFeedHeader: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.walnutShell[700],
+  },
+  alertFeedItem: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.walnutShell[200],
+    paddingTop: 6,
+  },
+  alertFeedTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.walnutGreen[900],
+  },
+  alertFeedBody: {
+    fontSize: 11,
+    color: Colors.walnutShell[700],
+    marginTop: 2,
   },
 });

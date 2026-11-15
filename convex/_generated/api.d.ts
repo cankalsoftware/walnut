@@ -8,7 +8,9 @@
  * @module
  */
 
+import type * as careBroadcasts from "../careBroadcasts.js";
 import type * as logs from "../logs.js";
+import type * as orchardFields from "../orchardFields.js";
 import type * as shop from "../shop.js";
 import type * as sync from "../sync.js";
 import type * as users from "../users.js";
@@ -20,7 +22,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  careBroadcasts: typeof careBroadcasts;
   logs: typeof logs;
+  orchardFields: typeof orchardFields;
   shop: typeof shop;
   sync: typeof sync;
   users: typeof users;
