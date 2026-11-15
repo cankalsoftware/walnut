@@ -54,6 +54,12 @@ DEFAULT_SCRAPE_QUERIES: dict[str, dict[str, list[str]]] = {
             "rotting walnut husks on orchard floor",
             "walnuts with cracked green hulls on dirt",
         ],
+        "background_no_walnut": [
+            "empty orchard grass and soil ground",
+            "dry autumn leaves on soil ground",
+            "bare orchard dirt floor under trees",
+            "green lawn grass and weeds close up",
+        ],
     },
     "canopy": {
         "walnut_hull_split": [
@@ -75,6 +81,12 @@ DEFAULT_SCRAPE_QUERIES: dict[str, dict[str, list[str]]] = {
             "juglans regia green fruit cluster canopy",
             "unripe green walnut cluster on tree leaves",
             "chandler walnut tree canopy fruiting branch",
+        ],
+        "background_no_walnut": [
+            "tree branches with green leaves no fruit",
+            "walnut tree foliage leaves canopy close up",
+            "deciduous orchard tree canopy leaves sunlight",
+            "empty green tree branches and twigs",
         ],
     },
 }
@@ -447,6 +459,25 @@ def main() -> None:
     }
 
     existing_hashes: set[str] = set()
+    if raw_root.exists():
+        for existing_file in raw_root.rglob("*"):
+            if not existing_file.is_file():
+                continue
+            stem = existing_file.stem
+            if stem.startswith("walnut_") and len(stem) == len("walnut_") + 16:
+                existing_hashes.add(stem[len("walnut_"):])
+            else:
+                try:
+                    existing_hashes.add(
+                        hashlib.sha256(existing_file.read_bytes()).hexdigest()[:16]
+                    )
+                except Exception:
+                    pass
+    if existing_hashes:
+        print(
+            f"[Scraper] Loaded {len(existing_hashes)} existing image hashes from {raw_root} (duplicates will be skipped).",
+            flush=True,
+        )
     total_saved = 0
 
     for target_group, class_name, queries in filtered_plan:

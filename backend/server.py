@@ -18,6 +18,7 @@ monitor all background jobs in real time!
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -145,7 +146,7 @@ def count_labels_in(folder: Path) -> int:
 @app.get("/api/status")
 def get_pipeline_status() -> dict[str, Any]:
     raw_dir = BUILDER_DIR / "raw_scraped"
-    curated_dir = BUILDER_DIR / "curated"
+    curated_dir = BUILDER_DIR / "CLIP_Curated"
     rejected_dir = BUILDER_DIR / "rejected_by_clip"
     datasets_dir = YOLO_DIR / "datasets"
 
@@ -235,53 +236,90 @@ def trigger_scrape(req: ScrapeRequest) -> dict[str, Any]:
 
 
 class ClipFilterRequest(BaseModel):
+    target: str = "all"  # all | ground | canopy
     confidence: float = 0.28
     export_yolo_cls: bool = True
+    input_dir: str | None = None
 
 
 @app.post("/api/jobs/clip-filter")
 def trigger_clip_filter(req: ClipFilterRequest) -> dict[str, Any]:
+    target = req.target if req.target in ("all", "ground", "canopy") else "all"
     cmd = [
         sys.executable,
         str(BUILDER_DIR / "2_clip_filter_and_classify.py"),
+        "--target",
+        target,
         "--confidence",
         str(req.confidence),
     ]
+    if req.input_dir and req.input_dir.strip():
+        cmd.extend(["--input", req.input_dir.strip()])
     if req.export_yolo_cls:
         cmd.append("--export-yolo-cls")
-    started = run_background_command("Zero-Shot CLIP Filter & Classify", cmd)
+    started = run_background_command(
+        f"Zero-Shot CLIP Filter & Classify ({target})", cmd
+    )
     return {"started": started}
 
 
 class LabelingActionRequest(BaseModel):
     action: str = "setup_classes"  # setup_classes | finalize_splits | launch_labelimg
-    target_folder: str = "ground"
+    target_folder: str = "all"  # all | ground | canopy
 
 
 @app.post("/api/jobs/labeling")
 def trigger_labeling(req: LabelingActionRequest) -> dict[str, Any]:
+    target = req.target_folder if req.target_folder in ("all", "ground", "canopy") else "all"
+
     if req.action == "finalize_splits":
         cmd = [
             sys.executable,
             str(BUILDER_DIR / "3_prepare_for_labeling.py"),
+            "--target",
+            target,
             "--finalize-splits",
         ]
-        started = run_background_command("Finalize Train/Val/Test Splits", cmd)
+        started = run_background_command(f"Finalize Train/Val/Test Splits ({target})", cmd)
         return {"started": started}
 
     if req.action == "launch_labelimg":
-        target_dir = BUILDER_DIR / "curated" / req.target_folder
+        curated_root = BUILDER_DIR / "CLIP_Curated"
+        target_dir = curated_root if target == "all" else (curated_root / target)
         classes_file = target_dir / "classes.txt"
-        cmd = ["labelImg", str(target_dir), str(classes_file)]
-        started = run_background_command(f"Launch labelImg ({req.target_folder})", cmd)
+        if not classes_file.exists():
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(BUILDER_DIR / "3_prepare_for_labeling.py"),
+                    "--target",
+                    target,
+                    "--setup-classes",
+                ],
+                check=False,
+            )
+        scripts_labelimg = Path(sys.executable).parent / "Scripts" / "labelImg.exe"
+        labelimg_bin = (
+            shutil.which("labelImg")
+            or (str(scripts_labelimg) if scripts_labelimg.exists() else None)
+        )
+        if not labelimg_bin:
+            raise HTTPException(
+                status_code=500,
+                detail="labelImg is not installed. Run: python -m pip install labelImg",
+            )
+        cmd = [labelimg_bin, str(target_dir), str(classes_file)]
+        started = run_background_command(f"Launch labelImg ({target})", cmd)
         return {"started": started}
 
     cmd = [
         sys.executable,
         str(BUILDER_DIR / "3_prepare_for_labeling.py"),
+        "--target",
+        target,
         "--setup-classes",
     ]
-    started = run_background_command("Setup classes.txt for Labeling", cmd)
+    started = run_background_command(f"Setup classes.txt for Labeling ({target})", cmd)
     return {"started": started}
 
 

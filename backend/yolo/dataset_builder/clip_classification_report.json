@@ -1,0 +1,2054 @@
+[
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_0352bf6bdf9135a6.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.618
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_177122e294ba6512.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6777
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_1a3c3a5416224def.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.9462
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_258dd6bb19d662bf.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.6631
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_2f999cb6bad40066.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.618
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_40bd332b1090ce7d.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7964
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_45e0f14a131291be.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.8297
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_49f8d2df90b494f9.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.5822
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_530712822ad59a11.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.8643
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_55e2e33dafa4254f.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9943
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_5607af25bfddb8b4.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.8446
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_5fe6ce241311a1e3.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.708
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_607d11ea45ea6908.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.9551
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_66a5f04ccd2bd45d.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.4751
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_6fea7f4f9aecdf3d.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.325
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_7a2464df772d7a5a.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.9873
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_7d57f8d805d1a5d8.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5807
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_7debe2b7336c61ee.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.8609
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_7f9378a89be9e7b0.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.8983
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_7fbfbd5c211527d6.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.9315
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_86ce25a70775beb7.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.4886
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_9f8b3089543fa39a.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.69
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_bdaa41d2a6166fb5.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.9636
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_c87985778a5c9a5a.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.8823
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_cd711051dde0da12.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.723
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_d399db5b2ffa6501.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.9475
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_d4302b4a8b70b6a2.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.9384
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_d485b3ea1e18e583.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.8743
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_e75d9d7a94448cbf.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.9636
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_efd9ff841a12b9fd.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.9301
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_f4e8f8a303023c4e.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.4797
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_fdfecfcaed6f282a.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6218
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_00dd642bbe97c87a.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9477
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_0292bf6336a3540d.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7664
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_0ea9be9346c0f8c6.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9683
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_12ce192fada8630c.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.8972
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_14c4c36b70ffcbb5.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.6927
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_15d9f3dbe35bd299.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.7613
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_19d580b29699169e.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9011
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_1aa08736eee3c577.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.8633
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_1d1de4abeec7916b.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7505
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_22ad60ef1fa39c5e.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5593
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_23d569dcb483112c.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9226
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_2a6ebd6482810e1d.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.923
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_3aa924322c470e7e.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6002
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_40d014534ef7be23.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.848
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_4c78abe34b301bdf.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7505
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_52a6037578705ecd.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.8522
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_6b998e00c122fb54.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.7613
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_746f99e90da057ef.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.4774
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_90d66e9aa0fc2dea.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9416
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_9763e167597e53aa.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9764
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_9a3aa95d1d190e67.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.8201
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_9cd2110e3a9f6ba9.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.8914
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_9dcb6a6661541acb.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9907
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_9e484f327ed5f93a.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6295
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_9ede620df7d92553.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7225
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_a434b5a6b03450f4.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.8652
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_ae422722fa6da356.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5414
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_c349f6867473fbb3.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9504
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_ca5c89f320bd468e.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9702
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_d113e07bfa135860.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7225
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_d156eef020038050.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5092
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_d618708d53a720f0.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7546
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_d87dbf5d2c9eaa44.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.5604
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_f09a67e9c130f28b.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7532
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_f9d730b8d50670ff.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7547
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_fa5805930cb78bed.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9811
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_0346e4309ce1ce5d.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7273
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_09c854dc76229e5b.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.3911
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_0c23fc47e80742d2.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.4962
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_11183a0275ec4a25.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.4408
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_1e114dd881106c78.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.7393
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_1f8dc3dded5c9738.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.6401
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_24c47557661519ad.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.3855
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_2e1bd38bd78f0537.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.5086
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_3182b66aa53b9b75.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7508
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_53c7c7c4b98f6597.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9199
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_583c94297fab1edc.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.7523
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_5841b6326f181e4e.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.6836
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_6449a7ef744605fb.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9007
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_68f2ec1d6f933d84.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.3279
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_6d7016069ff399c4.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.4707
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_7e194dde62d04e81.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.4408
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_80bbd3de51ed0820.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.8147
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_846b6a20e9497690.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7709
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_8561f900ad52ca97.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6554
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_88a82657fea72c09.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.7513
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_89845944abaef54c.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6253
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_8d28da5185f5ab4d.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.842
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_900fb9328bb7acc3.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.8528
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_9242a2db6394a399.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6559
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_9a53b0873fd06e9f.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.3216
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_a2b15eeb4365c447.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.899
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_a4c6a5e795371fbd.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.6001
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_b1390b2dbd81944c.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.6401
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_b858d61682054af0.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.5376
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_c459af6df14609e4.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.5724
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_caa5a590108cd3df.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6542
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_cb879e26f3605492.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.3708
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_cc9f28112ea402e3.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.5569
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_d131011856d82ce6.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.8138
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_da607a4e3ff6e7d0.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5926
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_ef43da6f7761ecfa.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.3953
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_ff32c74110be21ad.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6512
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_02cb4482699ec02a.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.2957
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_06fa41cb5149d431.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.8349
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_0973565f83212510.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5006
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_0ae36b121d4e933c.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.4111
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_0cbe68a3537065a7.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.6362
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_0cd6d4091a713453.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.3453
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_0ed890f8c67b234a.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.407
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_118a57b23075b922.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.8462
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_11ba0d9f6d020853.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.4331
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_137edf7a1b659725.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.6792
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_1749e99603171291.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.8145
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_1aa3523b167614c4.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.7282
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_1c86a92ee3b8bb2b.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5282
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_1cc94221598d9cf8.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.8233
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_1dff35a26651d455.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5455
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_1e941443e88db561.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.7826
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_2329eab42954eb25.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.8343
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_2556e885c4aeefbd.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.6038
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_2712992513759ed1.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.562
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_27e0446b5ba256cd.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.445
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_2cbfe09eb8b9dca7.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.3808
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_2cd33a67899951ad.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.4101
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_2d71f1ffeb505e35.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5908
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_35afbf5e9e515e25.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.3664
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_3ce2ae9d33895d06.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.599
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_3e7fe1ad88d34807.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.793
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_400f11c3e91077dd.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.8051
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_403760674bbb3243.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.4037
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_499e36a45cbe4831.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.5827
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_4a3d10590117261f.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.3158
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_4d08f44f815d66f1.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.6594
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_50a02eaeca07b2fc.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6414
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_51e981c2392ad117.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.4342
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_53814834a40f38a8.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5005
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_598bf27af3ea42eb.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.6172
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_5c7c6b40c0985f80.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5223
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_5d4ba8cc7d9482c6.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.597
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_5dd81bfbce0bdd79.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.7081
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_5dee340599874e39.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5265
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_5e3ea441042a0a51.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.5465
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_5eb1c80a99cb687a.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7371
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_5f8d6ffb016eb07c.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.6838
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_5fc6de2341d869d9.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.474
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_60d564bf0556e97e.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.7929
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_612171459b6d44bd.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.7281
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_6352af3c23b4fe24.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.5997
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_6d9a391a59f868d4.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.8711
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_6f74059ad20ec39c.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7023
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_6f8ad1220c9dcef1.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.497
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_72f02b1a7ce8b89f.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6065
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_74da91050d30e0d8.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.6052
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_76b192faf2906af6.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.4951
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_7b668ec6b511ab22.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.4789
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_7dc1cdf4b3436a8e.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.4177
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_7e4f9328f4f49253.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.6416
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_812daaeb8e410b51.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.6749
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_82a8c888a2ebdefc.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.6832
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_83420fdc7f8d553b.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5373
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_853fdbf5530623cc.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7298
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_856bab4f9d5bcd24.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.4997
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_88a82657fea72c09.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.7513
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_8a61fddc0ca27a95.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.7219
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_8edf8e8eee1abd5e.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.9561
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_93209d256ae89782.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.5028
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_9404b012662f0a20.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.5879
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_94b9439f55050057.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5326
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_9771762e18bb13a1.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.5117
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_9a10992c7493c3a3.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.8699
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_9c36d4328a3b8353.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.6757
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_9f15f2d76cd80401.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9456
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_a173939986175865.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.7951
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_a4bb79acbb72665b.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5907
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_a7458b1e0dcf2132.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.4774
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_ac7bf6894d00a0e2.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.8049
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_ad03478c716d16a9.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.4071
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_ad8f0a7a6c6f84e0.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5389
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_b40a29c78968ad0f.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.4871
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_b460af56458ce49a.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6122
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_baf4ecafb16f2bf0.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.9204
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_c033355ec2d31674.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.4287
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_c43b4d65bc9efb88.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.8897
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_c4ee3a495e93b833.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6484
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_c7012bb741b5e783.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.4632
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_c724e5558be4df27.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5435
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_c7e5aac3ca60e87a.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.4007
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_c82da5a1fe8fb2ec.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6754
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_c8ea98695baf46dd.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.5226
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_ca913bd2c37dfa92.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.6817
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_cb879e26f3605492.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.3708
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_cbe3a8098235701b.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.7656
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_cc773b8600f179f7.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.4682
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_d01a3786f1eb6fe9.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.5177
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_d131011856d82ce6.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.8138
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_d1de650c413d0727.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.4972
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_d52e7ba220fd0770.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5646
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_d758d77409b35798.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.8365
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_e146e8a50886c5cf.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7106
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_e3ea58363ca29eb0.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5005
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_e46aefa32f5a2e4c.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.9293
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_e4a2d35e2f5a825e.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5044
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_e698b9fb08a53265.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.445
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_e7628110e4190992.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5666
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_ea2effc4d7316fc4.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.4061
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_ebc67562d17bfdf3.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5252
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_ed0e306c2e611b04.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.8253
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_ed69c85eb79c8c05.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7495
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_ed9d840e113e4ba4.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.3704
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_ee1a17ebb19b4ed1.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.6679
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_ee572c5a42a7919e.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.7395
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_ee75f232fcd04608.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.6643
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_ee8554981d3927c4.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.6087
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_ef43da6f7761ecfa.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.3953
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_ef639d3473752818.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.715
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_f3914ad3f24f9a76.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.6631
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_f5ee40d2a2792d8e.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.9423
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_fb8336d417bdece3.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.6178
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_00bd9e34bdba6597.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.9748
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_04da59dca773cc31.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.8642
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_04f5e22ccef98417.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.3766
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_070ce802395f447e.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5684
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_07d55240a848e719.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5601
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_07f850eef3c93afd.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.5209
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_0a7237dfae7598ff.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.4609
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_0e4c13785f823eaa.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.6766
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_0e50df70489cd569.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.7523
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_111469735dc951ce.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.885
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_1152235b9c24981d.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.821
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_118a57b23075b922.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.8462
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_11a8e4ce14e9a4ed.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.4214
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_11c4c27ab67fa952.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.7571
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_1567550c39fecb8b.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.6152
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_198554228cbea22e.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.8495
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_1d50a57d5320a7fe.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.5112
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_1e8556e9f27094ea.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.602
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_226f209480a31625.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.5407
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_23de48914e0fdec8.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.7655
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_23eaef51770d2662.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5556
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_26c7fe5574f674aa.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5444
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_27f8a61701c357a6.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.8604
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_287b1e8f37eea408.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.688
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_28cf6d9562220f23.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.5123
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_2a01c8d770f6d0db.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.4042
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_2e506c042e5895c9.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7557
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_2e698e00074ad254.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.7777
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_303cbb84b5eaa5f6.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.9262
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_333295ceeb2fe053.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5595
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_337d38a32d0f6ca6.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.7378
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_34b95e12516ba1a0.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.5948
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_36594e011bb2e636.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.8587
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_36660ce2bf75ed27.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.3332
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_38aa643ca23b8796.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.5114
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_3a8c17971cc68158.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.9432
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_3adcb84cc19fa397.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9296
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_3af992fb5d440854.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.6619
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_41735e1988b43b1d.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.4035
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_48ea90dafee8235e.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.8967
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_4b9206939f25c131.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.3425
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_4d6dad90b904953d.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.9532
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_4e6bd01f03832173.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.5611
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_4f1eca3dca654bff.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.8694
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_4f65380ab7ee94de.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.6597
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_5f8d6ffb016eb07c.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.6838
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_611612ec4695dd1e.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.6352
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_64429d5a620b7501.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.9805
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_66d29665c8911168.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.6836
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_6a8ed6bf87f27532.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.8317
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_6bcf412eaea3bfd2.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.4991
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_6e561df48343cc45.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.7426
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_6fbe1bd7fb056590.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.6842
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_70eb4ed147c78e3f.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5296
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_75505c99607c239f.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.6194
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_761588f96fef690d.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.8611
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_7846b68a641ea86a.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.7633
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_78cae550f5702c24.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.6112
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_79242b8b443a1593.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.5733
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_7b2cc17080bcfc0b.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.6748
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_7c633d55a73406a7.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.884
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_7d64f3884d812e40.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.5536
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_7da60c943481c553.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.3609
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_7dba30353e4650d1.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7367
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_815d25f844089fc0.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.838
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_8445c397ed93db0d.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.7654
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_878150549e7b4eab.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9002
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_8b1d893cc41e613a.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.7714
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_8b30a8210a2a9afe.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.8171
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_8d27e6ae33a6dcf3.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.6173
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_8e2a34c11f707d3e.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.4097
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_8fff955448e14eed.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.5362
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_946b3ce2e98e2b08.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5413
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_997c00c701a05e7b.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.4909
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_a01fcb30ec50820e.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.8747
+  },
+  {
+    "file": "curated\\canopy\\walnut_blight_damaged\\walnut_a05d28710645144c.jpg",
+    "target": "canopy",
+    "class": "walnut_blight_damaged",
+    "clip_confidence": 0.4911
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_a3f48ab5add565be.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.8886
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_ac48c4a83a2b978d.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.7057
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_ad3ff43b4a1d2a31.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.6714
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_ad8cbcb7897981d1.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.547
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_ae3e66ba5036d437.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.5396
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_ae7848163edcf90b.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.9638
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_b244c5076f715d53.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.7146
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_b67655e8d8b29dc1.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.5558
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_ba4727c1e058eae6.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.556
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_bae29fb9929409b5.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.8438
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_c349f6867473fbb3.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9504
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_c3f14ce6c1126cd8.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.8419
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_c43b4d65bc9efb88.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.8897
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_c6f0f402bcb079c8.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.8638
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_c75c9079bb3c186e.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.8935
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_c7b8dd666826b097.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.7666
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_ca0dcd07d4552376.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.3965
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_ca5afa4dedeff682.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.5179
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_cae331637684c4f8.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9063
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_cb2ac8f2c1e79f8f.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.9632
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_ccfcaeaadbf1f0ae.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.5271
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_cd26ee8a7e62dbb3.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.9426
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_d3ab1a2a40c42ec5.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.5982
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_d57b430b9e9ef86a.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.8065
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_d59e585859c64edf.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.7237
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_d758d77409b35798.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.8365
+  },
+  {
+    "file": "curated\\canopy\\walnut_hull_split\\walnut_da17e2da1f7c581d.jpg",
+    "target": "canopy",
+    "class": "walnut_hull_split",
+    "clip_confidence": 0.527
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_e3a5649680e39528.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.6003
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_e3d50c90df3b289b.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.7614
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_e50fcf1d5a05928b.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.5588
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_e58eb1c7f5bf2493.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.6175
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_e73e9711784aa580.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.512
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_e9b3d6a4eb5fabed.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.8286
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_ea141593c8ba2d4d.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.5447
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_eb7850606ec03af6.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.6565
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_ec689b47563ed2fd.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.3594
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_ed2e01a821759cf5.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.533
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_f01e2e9c92db89b1.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.9144
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_f09ff5cf3f602723.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.6268
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_f4a93d8e392f0553.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.6356
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_f54093ebd8483848.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.6706
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_f8273533bf7d5a7d.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.7633
+  },
+  {
+    "file": "curated\\ground\\walnut_in_shell\\walnut_f96d66fcb88b1c13.jpg",
+    "target": "ground",
+    "class": "walnut_in_shell",
+    "clip_confidence": 0.7407
+  },
+  {
+    "file": "curated\\ground\\walnut_in_hull\\walnut_fb3b80d9748508ba.jpg",
+    "target": "ground",
+    "class": "walnut_in_hull",
+    "clip_confidence": 0.4022
+  },
+  {
+    "file": "curated\\canopy\\walnut_green\\walnut_fe5dc2eb726e5a24.jpg",
+    "target": "canopy",
+    "class": "walnut_green",
+    "clip_confidence": 0.3859
+  }
+]

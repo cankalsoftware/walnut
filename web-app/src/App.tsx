@@ -98,6 +98,16 @@ const SCRAPE_QUERY_OPTIONS: Record<
         'walnuts with cracked green hulls on dirt',
       ],
     },
+    {
+      className: 'background_no_walnut',
+      label: 'Ground • Blank Background (No Walnuts)',
+      queries: [
+        'empty orchard grass and soil ground',
+        'dry autumn leaves on soil ground',
+        'bare orchard dirt floor under trees',
+        'green lawn grass and weeds close up',
+      ],
+    },
   ],
   canopy: [
     {
@@ -132,6 +142,16 @@ const SCRAPE_QUERY_OPTIONS: Record<
         'chandler walnut tree canopy fruiting branch',
       ],
     },
+    {
+      className: 'background_no_walnut',
+      label: 'Canopy • Blank Background (No Walnuts)',
+      queries: [
+        'tree branches with green leaves no fruit',
+        'walnut tree foliage leaves canopy close up',
+        'deciduous orchard tree canopy leaves sunlight',
+        'empty green tree branches and twigs',
+      ],
+    },
   ],
 };
 
@@ -150,6 +170,46 @@ const SCRAPE_ENGINE_OPTIONS = [
   { id: 'instagram', label: 'Instagram (Public Index)' },
   { id: 'flickr', label: 'Flickr API' },
 ] as const;
+
+const CLIP_POSITIVE_PROMPTS = [
+  {
+    target: 'canopy' as const,
+    className: 'walnut_green',
+    prompt:
+      'a photo of intact green walnuts hanging on a walnut tree branch with green leaves in an orchard',
+  },
+  {
+    target: 'canopy' as const,
+    className: 'walnut_hull_split',
+    prompt:
+      'a photo of a ripening walnut on a tree with its green outer hull cracking or splitting open',
+  },
+  {
+    target: 'canopy' as const,
+    className: 'walnut_blight_damaged',
+    prompt:
+      'a photo of a diseased walnut on a tree with black blight spots or rotten dark husk damage',
+  },
+  {
+    target: 'ground' as const,
+    className: 'walnut_in_shell',
+    prompt:
+      'a photo of fallen brown walnuts in their hard wrinkled shells lying on soil, grass, or autumn leaves',
+  },
+  {
+    target: 'ground' as const,
+    className: 'walnut_in_hull',
+    prompt:
+      'a photo of fallen walnuts on the ground still inside green or dark decaying husks among leaves',
+  },
+];
+
+const CLIP_NEGATIVE_PROMPTS = [
+  'a photo of wooden furniture, walnut wood planks, tables, or flooring',
+  'a photo of baked food, walnut cake, brownies, salad, or kitchen recipes',
+  'a photo of plastic retail packaging, nutrition labels, charts, or text documents',
+  'a studio product photo of shelled walnut kernels in a white bowl',
+];
 
 export default function App({
   hasClerk,
@@ -245,6 +305,15 @@ function AdminPortalApp({
   const [queriesExpanded, setQueriesExpanded] = useState(false);
   const [enginesExpanded, setEnginesExpanded] = useState(false);
   const [maxPerQuery, setMaxPerQuery] = useState<string>('40');
+  const [clipTarget, setClipTarget] = useState<'all' | 'ground' | 'canopy'>(
+    'all'
+  );
+  const [clipConfidence, setClipConfidence] = useState<string>('0.28');
+  const [clipInputDir, setClipInputDir] = useState<string>('');
+  const [clipPromptsExpanded, setClipPromptsExpanded] = useState(false);
+  const [labelTarget, setLabelTarget] = useState<'all' | 'ground' | 'canopy'>(
+    'all'
+  );
   const [pipelineStepTab, setPipelineStepTab] = useState<
     'scrape' | 'clip' | 'label' | 'import'
   >('scrape');
@@ -261,6 +330,15 @@ function AdminPortalApp({
   const [walnutDataPath, setWalnutDataPath] = useState<string>('./WalnutData');
   const [trainTarget, setTrainTarget] = useState<'vps' | 'colab'>('vps');
   const [notice, setNotice] = useState<string | null>(null);
+  const [spinnerIdx, setSpinnerIdx] = useState(0);
+
+  useEffect(() => {
+    if (statusData?.job.status !== 'RUNNING') return;
+    const timer = setInterval(() => {
+      setSpinnerIdx((prev) => (prev + 1) % 4);
+    }, 200);
+    return () => clearInterval(timer);
+  }, [statusData?.job.status]);
 
   const fetchWorkerStatus = async () => {
     try {
@@ -322,6 +400,30 @@ function AdminPortalApp({
     const matchingLogs = (statusData?.job.logs ?? []).filter((line) =>
       keywords.some((k) => line.toLowerCase().includes(k.toLowerCase()))
     );
+    const spinnerChars = ['◐', '◓', '◑', '◒'];
+    const isRunning = stepStatus === 'RUNNING';
+
+    // Parse latest progress line (e.g. "[CLIP] Progress 45/354 (13%) | Accepted: 30 | Rejected: 15 | ...")
+    let progressInfo: {
+      current: number;
+      total: number;
+      pct: number;
+      detail: string;
+    } | null = null;
+    for (let i = matchingLogs.length - 1; i >= 0; i -= 1) {
+      const m = matchingLogs[i].match(
+        /Progress\s+(\d+)\/(\d+)\s+\((\d+)%\)(?:\s*\|\s*(.+))?/i
+      );
+      if (m) {
+        progressInfo = {
+          current: Number(m[1]),
+          total: Number(m[2]),
+          pct: Math.min(100, Math.max(0, Number(m[3]))),
+          detail: m[4] ? m[4].trim() : '',
+        };
+        break;
+      }
+    }
 
     return (
       <div
@@ -342,15 +444,73 @@ function AdminPortalApp({
             justifyContent: 'space-between',
             alignItems: 'center',
             marginBottom: 6,
+            gap: 8,
+            flexWrap: 'wrap',
           }}
         >
-          <strong style={{ color: '#294A1F' }}>
-            {title} ({stepStatus})
+          <strong style={{ color: '#294A1F', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {isRunning && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  color: '#1B5E20',
+                  fontSize: 14,
+                  fontWeight: 800,
+                }}
+                aria-label="Running"
+              >
+                {spinnerChars[spinnerIdx]}
+              </span>
+            )}
+            <span>
+              {title} ({stepStatus})
+            </span>
+            {progressInfo && (
+              <span
+                style={{
+                  backgroundColor: '#E1F0D8',
+                  color: '#1E4620',
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              >
+                {progressInfo.current}/{progressInfo.total} ({progressInfo.pct}%)
+              </span>
+            )}
           </strong>
           <span style={{ color: '#6B7D65', fontSize: 11 }}>
             Drag bottom-right corner to resize
           </span>
         </div>
+        {(isRunning || progressInfo) && (
+          <div style={{ marginBottom: 8 }}>
+            <div
+              style={{
+                width: '100%',
+                height: 8,
+                backgroundColor: '#DCEAD3',
+                borderRadius: 999,
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: `${progressInfo ? progressInfo.pct : 15}%`,
+                  height: '100%',
+                  backgroundColor: isRunning ? '#2E7D32' : '#558B2F',
+                  transition: 'width 0.25s ease',
+                }}
+              />
+            </div>
+            {progressInfo?.detail && (
+              <div style={{ fontSize: 11, color: '#3F5A34', marginTop: 4 }}>
+                {progressInfo.detail}
+              </div>
+            )}
+          </div>
+        )}
         <div
           style={{
             fontFamily: 'monospace',
@@ -681,14 +841,15 @@ function AdminPortalApp({
                     help={{
                       title: '1. Web Image Scraper',
                       whatItDoes:
-                        'Downloads walnut photos from web search engines into raw_scraped/ so you can build a training dataset.',
+                        'Downloads walnut photos from selected web search engines into raw_scraped/ (or a custom folder) so you can build a training dataset.',
                       howToDoIt: [
-                        'Select a category: choose "Canopy Walnuts" to scrape tree canopy & hull-split photos, "Ground Walnuts" for fallen harvest nuts, or "All Categories".',
-                        'Set the number box (Max Images per Search Query, default 40). For example, 40 downloads up to 40 photos for each search term in that category. Use 20 for a quick test or 60-100 for a larger dataset.',
+                        'Select a category: "Ground Walnuts", "Canopy Walnuts", or "All Categories".',
+                        'Set the number box (Max Images per Category per Engine, default 40). For example, 40 downloads up to 40 photos for each selected category from each selected search engine.',
+                        'Optionally expand "Search Queries" and "Search Engines" to pick specific queries or engines (Bing, DuckDuckGo, Google, Yahoo, Yandex, Wikimedia, Instagram, Flickr), or set a custom Download Folder.',
                         'Make sure your Python Backend Worker is online (Tab 4), then click "Run Scraper".',
                       ],
                       whatToExpect:
-                        'The "Raw Scraped" counter above will climb as images download (usually 1-3 minutes). Next, run Step 2 (CLIP Auto-Filter) to remove unrelated photos.',
+                        'Previous job logs clear on each new search, full scrollable logs stream below (and save to Convex for 30 days), and the "Raw Scraped" counter climbs as images download. Next, run Step 2 (CLIP Auto-Filter).',
                     }}
                   />
                 </h3>
@@ -705,24 +866,107 @@ function AdminPortalApp({
                     <option value="canopy">Canopy Walnuts</option>
                     <option value="all">All Categories</option>
                   </select>
-                  <input
-                    type="number"
-                    min={1}
-                    max={500}
-                    title="Max images per category per search engine"
-                    placeholder="40"
-                    style={styles.numInput}
-                    value={maxPerQuery}
-                    onChange={(e) => setMaxPerQuery(e.target.value)}
-                    onBlur={() => {
-                      const parsed = parseInt(maxPerQuery, 10);
-                      setMaxPerQuery(
-                        Number.isFinite(parsed) && parsed > 0
-                          ? String(parsed)
-                          : '40'
-                      );
-                    }}
-                  />
+                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                    <input
+                      type="number"
+                      min={1}
+                      max={2000}
+                      title="Max images per category per search engine"
+                      placeholder="40"
+                      style={styles.numInput}
+                      value={maxPerQuery}
+                      onChange={(e) => setMaxPerQuery(e.target.value)}
+                      onBlur={() => {
+                        const parsed = parseInt(maxPerQuery, 10);
+                        setMaxPerQuery(
+                          Number.isFinite(parsed) && parsed > 0
+                            ? String(parsed)
+                            : '40'
+                        );
+                      }}
+                    />
+                    <WebHelpButton
+                      help={{
+                        title: 'Dataset Image Count Guide (Per Category & Engine)',
+                        whatItDoes:
+                          'Sets how many NEW images to download per category from each selected search engine. Remember: with 8 engines selected, 50 = up to 400 raw images per category.',
+                        howToDoIt: [
+                          '• 5 (Quick Test): ~40 raw/category across 8 engines. Best for smoke-testing scraping, CLIP, and labelImg.',
+                          '• 50 (Good Starter): ~400 raw/category (~200–280 after CLIP). Solid baseline when combined with Step 4 WalnutData.',
+                          '• 200–250 (Ultralytics Gold Standard): ~1,600–2,000 raw/category (~1,000–1,500+ curated/class). Matches Ultralytics’ >=1,500 images/class recommendation for high accuracy. Colab T4: ~1.5–2.5 hrs (~$0.25–$0.45).',
+                          '• 500–1,000+ (Heavy / Multi-Run): 4,000–8,000+ raw/category. Expect long scrape/CLIP/labeling times; best trained on Colab L4/A100 (~$1–$3.50/run). Keep 5–10% blank background images to reduce false positives.',
+                        ],
+                        whatToExpect:
+                          '350K-image datasets are for 80–600 classes; for 2–3 classes, 1,500+ curated images (and >=10,000 labeled boxes) per class is Ultralytics’ sweet spot.',
+                        tables: [
+                          {
+                            title: 'Sample Scrape Count Table (8 Search Engines Selected)',
+                            headers: [
+                              'Count Box',
+                              'Raw / Category',
+                              'Est. After CLIP / Class',
+                              'Quality Tier',
+                            ],
+                            rows: [
+                              [
+                                '5',
+                                '~40',
+                                '~20–28',
+                                'Quick Test (smoke-test queries, CLIP & labelImg)',
+                              ],
+                              [
+                                '50',
+                                '~400',
+                                '~200–280',
+                                'Good Starter (solid baseline + Step 4 WalnutData)',
+                              ],
+                              [
+                                '200–250',
+                                '~1,600–2,000',
+                                '~1,000–1,500+',
+                                'Ultralytics Gold Standard (high-accuracy production)',
+                              ],
+                              [
+                                '500–1,000+',
+                                '~4,000–8,000+',
+                                '~2,500–5,500+',
+                                'Extreme / Heavy (long scrape, CLIP & labeling time)',
+                              ],
+                            ],
+                          },
+                          {
+                            title: 'Google Colab GPU Cost & Time Reference (~$0.10 / Compute Unit)',
+                            headers: [
+                              'Colab GPU',
+                              'Burn Rate / Cost',
+                              '3K–5K Images (~100 epochs)',
+                              'Best Use Case',
+                            ],
+                            rows: [
+                              [
+                                'NVIDIA T4',
+                                '~1.6–1.8 units/hr (~$0.16–$0.18/hr, or Free tier)',
+                                '~1.5–2.5 hrs (~$0.25–$0.45)',
+                                'Starter & Gold Standard up to ~5K–8K images',
+                              ],
+                              [
+                                'NVIDIA L4',
+                                '~3.0–4.8 units/hr (~$0.30–$0.48/hr)',
+                                '~45–75 mins (~$0.25–$0.60)',
+                                'Faster training for 5K–15K images',
+                              ],
+                              [
+                                'NVIDIA A100',
+                                '~10.6–15 units/hr (~$1.05–$1.50/hr)',
+                                '~20–35 mins (~$0.40–$0.90)',
+                                'Large 15K–30K+ image runs (~1–2.5 hrs, ~$1.50–$3.75)',
+                              ],
+                            ],
+                          },
+                        ],
+                      }}
+                    />
+                  </span>
                 </div>
                   <div
                     style={{
@@ -1342,31 +1586,300 @@ function AdminPortalApp({
                     help={{
                       title: '2. CLIP Auto-Filter',
                       whatItDoes:
-                        'Uses OpenAI CLIP to automatically score raw scraped photos and keep only real walnut canopy/ground images.',
+                        'Uses OpenAI CLIP to score scraped or local photos, reject off-topic junk (furniture, food, charts), and sort real walnut photos into canopy/ground class folders.',
                       howToDoIt: [
-                        'Run Step 1 (Web Image Scraper) first so raw images exist.',
+                        'Choose "Section Target" (all, ground, or canopy) to filter everything or only one section.',
+                        'Adjust "Min Confidence" (default 0.28) — raise it for stricter filtering or lower it to keep more borderline images.',
+                        'Leave "Source Folder" blank to use default raw_scraped/, or enter a custom folder path (or click "Use Step 1 Folder").',
                         'Click "Run CLIP Filter".',
                       ],
                       whatToExpect:
-                        'Valid orchard photos move to "CLIP Curated" and off-topic photos move to "CLIP Rejected". Review the live logs below for progress.',
+                        'Valid orchard photos copy to CLIP_Curated/ ("CLIP Curated") and export to datasets/walnut_classify/, while off-topic photos copy to rejected_by_clip/ ("CLIP Rejected"). Full logs stream below and save to Convex.',
                     }}
                   />
                 </h3>
                 <p style={styles.stepDesc}>
                   Removes non-orchard images and sorts valid walnut photos into
-                  class folders.
+                  class folders. Choose All, Ground only, or Canopy only.
                 </p>
+                <div
+                  style={{
+                    marginTop: 8,
+                    marginBottom: 12,
+                    padding: 10,
+                    borderRadius: 8,
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #CFE3C4',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => setClipPromptsExpanded((prev) => !prev)}
+                  >
+                    <strong style={{ fontSize: 12, color: '#294A1F' }}>
+                      CLIP Prompts (
+                      {
+                        CLIP_POSITIVE_PROMPTS.filter(
+                          (p) => clipTarget === 'all' || p.target === clipTarget
+                        ).length
+                      }{' '}
+                      positive + {CLIP_NEGATIVE_PROMPTS.length} negative active for{' '}
+                      {clipTarget})
+                    </strong>
+                    <span style={{ fontSize: 11, color: '#4B633F', fontWeight: 600 }}>
+                      {clipPromptsExpanded ? '▴ Hide' : '▾ Show'}
+                    </span>
+                  </div>
+                  {clipPromptsExpanded && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                        gap: 12,
+                        fontSize: 12,
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            color: '#2F4625',
+                            marginBottom: 6,
+                          }}
+                        >
+                          Positive Prompts (Accepted Classes)
+                        </div>
+                        <ul
+                          style={{
+                            margin: 0,
+                            paddingLeft: 18,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 6,
+                          }}
+                        >
+                          {CLIP_POSITIVE_PROMPTS.map((item) => {
+                            const active =
+                              clipTarget === 'all' || item.target === clipTarget;
+                            return (
+                              <li
+                                key={`${item.target}/${item.className}`}
+                                style={{
+                                  opacity: active ? 1 : 0.45,
+                                  color: '#1F2F18',
+                                }}
+                              >
+                                <strong>
+                                  {item.target}/{item.className}
+                                </strong>
+                                {!active && ' (inactive for current target)'}:{' '}
+                                <span style={{ color: '#4B633F' }}>
+                                  "{item.prompt}"
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            color: '#7A2E2E',
+                            marginBottom: 6,
+                          }}
+                        >
+                          Negative Prompts (Always Rejected)
+                        </div>
+                        <ul
+                          style={{
+                            margin: 0,
+                            paddingLeft: 18,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 6,
+                            color: '#4A2B2B',
+                          }}
+                        >
+                          {CLIP_NEGATIVE_PROMPTS.map((prompt) => (
+                            <li key={prompt}>"{prompt}"</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 12,
+                    alignItems: 'flex-end',
+                    marginBottom: 10,
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label
+                      htmlFor="clip-target-select"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: '#2F4625',
+                      }}
+                    >
+                      Section Target
+                      <WebHelpButton
+                        help={{
+                          title: 'CLIP Section Target',
+                          whatItDoes:
+                            'Controls which scraped folder and CLIP prompts are evaluated during filtering.',
+                          howToDoIt: [
+                            'Select "all (ground + canopy)" to filter every image against all 5 walnut classes.',
+                            'Select "ground" to scan raw_scraped/ground/ using only ground walnut prompts (in-shell and in-hull).',
+                            'Select "canopy" to scan raw_scraped/canopy/ using only canopy prompts (green, hull-split, blight-damaged).',
+                          ],
+                          whatToExpect:
+                            'Running ground and canopy separately prevents cross-misclassification and preserves the other section in clip_classification_report.json.',
+                        }}
+                      />
+                    </label>
+                    <select
+                      id="clip-target-select"
+                      value={clipTarget}
+                      onChange={(e) =>
+                        setClipTarget(
+                          e.target.value as 'all' | 'ground' | 'canopy'
+                        )
+                      }
+                      style={styles.select}
+                      aria-label="CLIP target section"
+                    >
+                      <option value="all">all (ground + canopy)</option>
+                      <option value="ground">ground</option>
+                      <option value="canopy">canopy</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label
+                      htmlFor="clip-confidence-input"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: '#2F4625',
+                      }}
+                    >
+                      Min Confidence
+                      <WebHelpButton
+                        help={{
+                          title: 'CLIP Minimum Confidence',
+                          whatItDoes:
+                            'Sets the minimum CLIP probability score (0.05 to 0.95) required to accept an image into Curated.',
+                          howToDoIt: [
+                            'Default is 0.28. Increase (e.g. 0.35–0.45) to be stricter and reject ambiguous photos.',
+                            'Decrease (e.g. 0.20) if too many valid walnut photos are being rejected.',
+                          ],
+                          whatToExpect:
+                            'Any image scoring below this threshold—or matching a negative junk prompt (wood, food, packaging)—is copied to rejected_by_clip/.',
+                        }}
+                      />
+                    </label>
+                    <input
+                      id="clip-confidence-input"
+                      type="number"
+                      min="0.05"
+                      max="0.95"
+                      step="0.02"
+                      value={clipConfidence}
+                      onChange={(e) => setClipConfidence(e.target.value)}
+                      style={{ ...styles.numInput, width: 96 }}
+                      title="Minimum CLIP confidence (default 0.28)"
+                      aria-label="CLIP confidence threshold"
+                    />
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                      flex: 1,
+                      minWidth: 240,
+                    }}
+                  >
+                    <label
+                      htmlFor="clip-source-folder-input"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: '#2F4625',
+                      }}
+                    >
+                      Source Folder (optional)
+                      <WebHelpButton
+                        help={{
+                          title: 'CLIP Source Folder',
+                          whatItDoes:
+                            'Specifies which folder CLIP reads raw images from.',
+                          howToDoIt: [
+                            'Leave blank to use the default backend/yolo/dataset_builder/raw_scraped folder.',
+                            'Or paste any local folder path (or click "Use Step 1 Folder" if you set a custom Download Folder in Step 1).',
+                          ],
+                          whatToExpect:
+                            'CLIP scans the selected folder (or its /ground or /canopy subfolder when Section Target is set) recursively for .jpg, .jpeg, .png, and .webp files.',
+                        }}
+                      />
+                    </label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input
+                        id="clip-source-folder-input"
+                        type="text"
+                        value={clipInputDir}
+                        onChange={(e) => setClipInputDir(e.target.value)}
+                        placeholder="Blank = default raw_scraped"
+                        style={{ ...styles.input, marginBottom: 0, flex: 1 }}
+                        aria-label="CLIP source folder"
+                      />
+                      {scrapeOutputDir.trim() && clipInputDir !== scrapeOutputDir && (
+                        <button
+                          type="button"
+                          style={styles.secondaryBtn}
+                          onClick={() => setClipInputDir(scrapeOutputDir)}
+                        >
+                          Use Step 1 Folder
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 <button
                   style={styles.primaryBtn}
                   onClick={() =>
                     runJob(
                       '/api/jobs/clip-filter',
-                      { confidence: 0.28, export_yolo_cls: true },
-                      'CLIP Auto-Filter'
+                      {
+                        target: clipTarget,
+                        confidence: Number(clipConfidence) || 0.28,
+                        export_yolo_cls: true,
+                        input_dir: clipInputDir.trim() || undefined,
+                      },
+                      `CLIP Auto-Filter (${clipTarget})`
                     )
                   }
                 >
-                  Run CLIP Filter
+                  Run CLIP Filter ({clipTarget})
                 </button>
                 {renderStepProgress(
                   'CLIP Filter Progress',
@@ -1384,10 +1897,11 @@ function AdminPortalApp({
                     help={{
                       title: '3. Labeling & Split',
                       whatItDoes:
-                        'Opens labelImg to draw bounding boxes on curated walnut photos, then splits them 80% train / 15% val / 5% test for YOLO11.',
+                        'Prepares classes.txt, opens labelImg to draw bounding boxes on CLIP_Curated walnut photos, and splits labeled pairs 80% train / 15% val / 5% test for YOLO11.',
                       howToDoIt: [
-                        'Click "Label Ground" or "Label Canopy" to annotate bounding boxes locally.',
-                        'Once labeled, click "Finalize Splits" to prepare the YOLO dataset.',
+                        'Choose "Section Target" (all, ground, or canopy) to work on both sections or one folder individually.',
+                        'Click "Launch labelImg" to open the desktop annotator (classes.txt is generated automatically if missing).',
+                        'After saving YOLO .txt annotations, click "Finalize Splits" to export the train/val/test dataset.',
                       ],
                       whatToExpect:
                         'The "Training Ready" counter updates with the total number of labeled images ready for YOLO11 training.',
@@ -1395,51 +1909,123 @@ function AdminPortalApp({
                   />
                 </h3>
                 <p style={styles.stepDesc}>
-                  Launch <code>labelImg</code> or finalize 80/15/5 train/val/test
+                  Select a section (All, Ground, or Canopy), launch{' '}
+                  <code>labelImg</code>, or finalize 80/15/5 train/val/test
                   splits.
                 </p>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 12,
+                    alignItems: 'flex-end',
+                    marginBottom: 10,
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label
+                      htmlFor="label-target-select"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: '#2F4625',
+                      }}
+                    >
+                      Section Target
+                      <WebHelpButton
+                        help={{
+                          title: 'Labeling Section Target',
+                          whatItDoes:
+                            'Selects which CLIP_Curated folder to label and split.',
+                          howToDoIt: [
+                            'Choose "all (ground + canopy)" to open CLIP_Curated/ or split both datasets.',
+                            'Choose "ground" to label and split CLIP_Curated/ground/ only.',
+                            'Choose "canopy" to label and split CLIP_Curated/canopy/ only.',
+                          ],
+                          whatToExpect:
+                            'Launch labelImg opens the selected folder with its matching classes.txt; Finalize Splits exports only the chosen section.',
+                        }}
+                      />
+                    </label>
+                    <select
+                      id="label-target-select"
+                      value={labelTarget}
+                      onChange={(e) =>
+                        setLabelTarget(
+                          e.target.value as 'all' | 'ground' | 'canopy'
+                        )
+                      }
+                      style={styles.select}
+                      aria-label="Labeling target section"
+                    >
+                      <option value="all">all (ground + canopy)</option>
+                      <option value="ground">ground</option>
+                      <option value="canopy">canopy</option>
+                    </select>
+                  </div>
+                </div>
                 <div style={styles.row}>
                   <button
                     style={styles.secondaryBtn}
                     onClick={() =>
                       runJob(
                         '/api/jobs/labeling',
-                        { action: 'launch_labelimg', target_folder: 'ground' },
-                        'Launch labelImg (Ground)'
+                        { action: 'setup_classes', target_folder: labelTarget },
+                        `Setup classes.txt (${labelTarget})`
                       )
                     }
                   >
-                    Label Ground
+                    Setup classes.txt ({labelTarget})
                   </button>
+                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                    <button
+                      style={styles.primaryBtn}
+                      onClick={() =>
+                        runJob(
+                          '/api/jobs/labeling',
+                          { action: 'launch_labelimg', target_folder: labelTarget },
+                          `Launch labelImg (${labelTarget})`
+                        )
+                      }
+                    >
+                      Launch labelImg ({labelTarget})
+                    </button>
+                    <WebHelpButton
+                      help={{
+                        title: 'How to Use labelImg (First-Time Guide)',
+                        whatItDoes:
+                          'Opens the labelImg desktop window pre-loaded with your CLIP_Curated images and walnut class names.',
+                        howToDoIt: [
+                          '1. Switch format to YOLO: On the left toolbar, click "PascalVOC" until it changes to "YOLO" (this ensures .txt files are saved instead of .xml).',
+                          '2. Check Save Location: Save labels in the SAME folder as the image (e.g. CLIP_Curated/ground/walnut_in_shell/image_01.txt right next to image_01.jpg). If labelImg opens a subfolder, use "Open Dir" on a class subfolder so images and .txt files stay together.',
+                          '3. Draw boxes: Press W to draw a bounding box around each walnut, pick the class from the popup, then press D (Next) and Ctrl+S (Save)—or turn on View → Auto Save Mode.',
+                          '4. No walnuts in image (Background / Negative sample): If an orchard photo has zero walnuts and you want YOLO to learn "no nuts here", turn on View → Auto Save Mode and press D (or press Space to Verify) — labelImg will write a blank 0-byte .txt file even though Save is grayed out. (If the photo is off-topic junk, delete the image instead.)',
+                          '5. Split for YOLO: Close labelImg when done and click "Finalize Splits" to automatically copy paired images into images/{train,val,test}/ and .txt files into labels/{train,val,test}/.',
+                        ],
+                        whatToExpect:
+                          'Each labeled photo gets a matching .txt file next to it in CLIP_Curated/, and "Finalize Splits" builds the final YOLO images/ and labels/ folders inside backend/yolo/datasets/.',
+                      }}
+                    />
+                  </span>
                   <button
                     style={styles.secondaryBtn}
                     onClick={() =>
                       runJob(
                         '/api/jobs/labeling',
-                        { action: 'launch_labelimg', target_folder: 'canopy' },
-                        'Launch labelImg (Canopy)'
+                        { action: 'finalize_splits', target_folder: labelTarget },
+                        `Finalize Splits (${labelTarget})`
                       )
                     }
                   >
-                    Label Canopy
+                    Finalize Splits ({labelTarget})
                   </button>
                 </div>
-                <button
-                  style={styles.secondaryBtn}
-                  onClick={() =>
-                    runJob(
-                      '/api/jobs/labeling',
-                      { action: 'finalize_splits' },
-                      'Finalize Splits'
-                    )
-                  }
-                >
-                  Finalize Splits
-                </button>
                 {renderStepProgress(
                   'Labeling & Split Progress',
-                  ['labelImg', 'Splits', '3_prepare_for_labeling'],
-                  'Ready. Label images or click "Finalize Splits".'
+                  ['Labeling', 'labelImg', 'Splits', '3_prepare_for_labeling'],
+                  'Ready. Select a section and launch labelImg or click "Finalize Splits".'
                 )}
               </div>
               )}

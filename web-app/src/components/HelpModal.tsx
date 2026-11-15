@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
 
+export interface WebHelpTable {
+  title: string;
+  headers: string[];
+  rows: string[][];
+}
+
 export interface WebHelpContent {
   title: string;
   whatItDoes: string;
   howToDoIt: string[];
   whatToExpect: string;
+  tables?: WebHelpTable[];
 }
 
 export function WebHelpButton({ help }: { help: WebHelpContent }) {
@@ -59,7 +66,9 @@ export function WebHelpButton({ help }: { help: WebHelpContent }) {
               backgroundColor: '#FFFFFF',
               borderRadius: 14,
               border: '1px solid #CFE3C4',
-              maxWidth: 480,
+              maxWidth: help.tables && help.tables.length > 0 ? 680 : 480,
+              maxHeight: '85vh',
+              overflowY: 'auto',
               width: '100%',
               padding: 20,
               boxShadow: '0 12px 32px rgba(26, 38, 22, 0.2)',
@@ -119,6 +128,65 @@ export function WebHelpButton({ help }: { help: WebHelpContent }) {
               >
                 <strong>What to expect:</strong> {help.whatToExpect}
               </p>
+              {help.tables?.map((tbl, tIdx) => (
+                <div key={tIdx} style={{ marginTop: 12 }}>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      color: '#294A1F',
+                      marginBottom: 6,
+                      fontSize: 12,
+                    }}
+                  >
+                    {tbl.title}
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table
+                      style={{
+                        width: '100%',
+                        borderCollapse: 'collapse',
+                        fontSize: 11.5,
+                      }}
+                    >
+                      <thead>
+                        <tr style={{ backgroundColor: '#EDF5E8' }}>
+                          {tbl.headers.map((h, hIdx) => (
+                            <th
+                              key={hIdx}
+                              style={{
+                                textAlign: 'left',
+                                padding: '6px 8px',
+                                border: '1px solid #CFE3C4',
+                                color: '#294A1F',
+                              }}
+                            >
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tbl.rows.map((row, rIdx) => (
+                          <tr key={rIdx}>
+                            {row.map((cell, cIdx) => (
+                              <td
+                                key={cIdx}
+                                style={{
+                                  padding: '6px 8px',
+                                  border: '1px solid #E6F0E0',
+                                  verticalAlign: 'top',
+                                }}
+                              >
+                                {cell}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

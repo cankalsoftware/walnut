@@ -39,6 +39,7 @@ backend/yolo/runs/
 backend/yolo/.ultralytics/
 backend/yolo/dataset_builder/raw_scraped/
 backend/yolo/dataset_builder/curated/
+backend/yolo/dataset_builder/CLIP_Curated/
 backend/yolo/dataset_builder/rejected_by_clip/
 backend/yolo/dataset_builder/walnutdata_hf_raw/
 *.pt
