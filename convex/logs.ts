@@ -1,24 +1,8 @@
-import { mutation, MutationCtx, query } from './_generated/server';
+import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
+import { isAdminCaller, requireAdmin } from './lib/auth';
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-const ADMIN_EMAIL = 'pinarlik99@gmail.com';
-
-async function requireAdmin(ctx: MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
-    throw new Error('Unauthorized: admin sign-in required');
-  }
-  const email = (identity.email ?? '').trim().toLowerCase();
-  const user = await ctx.db
-    .query('users')
-    .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
-    .first();
-  if (email !== ADMIN_EMAIL && user?.role !== 'admin') {
-    throw new Error('Forbidden: administrator permissions required');
-  }
-  return identity;
-}
 
 /**
  * Saves a categorized pipeline job log (scrape | clip | labeling | import | training)
@@ -79,6 +63,9 @@ export const purgeExpiredLogs = mutation({
 export const listPipelineLogs = query({
   args: { category: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    if (!(await isAdminCaller(ctx))) {
+      return [];
+    }
     const now = Date.now();
     const rows = args.category
       ? await ctx.db

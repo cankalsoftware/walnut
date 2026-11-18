@@ -166,9 +166,13 @@ export default function LegalAndSafetyScreen() {
                 Authority (e.g., ICO in the UK or EU DPA).{'\n\n'}
                 <Text style={styles.bold}>How to Delete Your Account & Data:{'\n'}</Text>
                 1. Instant In-App Deletion: Open Account → Tap "Delete Account &
-                Data" to erase all Convex cloud tables, clear SQLite, and delete
-                your Clerk profile.{'\n'}
-                2. Email Request: Write to pinarlik99@gmail.com with subject
+                Data" to erase your Clerk profile, local SQLite cache, single-owner
+                orchard/marketplace records, uploaded photo blobs, and scrub PII
+                on two-party trade threads.{'\n'}
+                2. Anti-Fraud Dispute Archive Notice: Policy-removed marketplace
+                trust disputes keep only an anonymized phone hash for 90 days to
+                prevent ban evasion, with all comments and personal identifiers scrubbed.{'\n'}
+                3. Email Request: Write to pinarlik99@gmail.com with subject
                 "Delete WalnutIQ Account".
               </Text>
             </>

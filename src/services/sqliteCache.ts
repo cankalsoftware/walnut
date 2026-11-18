@@ -8,6 +8,18 @@ import {
 
 const WEB_STORAGE_KEY = 'walnutiq_sqlite_cache_fallback';
 const WEB_INITIALIZED_KEY = 'walnutiq_sqlite_initialized';
+const WEB_MARKETPLACE_DRAFTS_KEY = 'walnutiq_marketplace_drafts';
+
+export interface MarketplaceDraftRecord {
+  localDraftId: string;
+  title: string;
+  variety: string;
+  availableKg: number;
+  payloadJson: string;
+  photoSlotsLocalJson: string;
+  draftState: 'EDITING' | 'QUEUED_PUBLISH' | 'SYNCED';
+  updatedAtMs: number;
+}
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 let tableInitialized = false;
@@ -31,6 +43,17 @@ function getNativeDb(): SQLite.SQLiteDatabase {
         key TEXT PRIMARY KEY NOT NULL,
         value TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS marketplace_drafts (
+        localDraftId TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL,
+        variety TEXT NOT NULL,
+        availableKg REAL NOT NULL,
+        payloadJson TEXT NOT NULL,
+        photoSlotsLocalJson TEXT NOT NULL,
+        draftState TEXT NOT NULL,
+        updatedAtMs INTEGER NOT NULL
+      );
+      PRAGMA user_version = 2;
     `);
     tableInitialized = true;
   }
@@ -229,6 +252,9 @@ export function purgeExpiredSyncedInSqlite(
 export function clearAllSqliteCache(): void {
   if (Platform.OS === 'web') {
     writeWebFallback([]);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(WEB_MARKETPLACE_DRAFTS_KEY);
+    }
     return;
   }
   try {
@@ -237,7 +263,121 @@ export function clearAllSqliteCache(): void {
       `INSERT OR REPLACE INTO sqlite_meta (key, value) VALUES ('initialized', '1')`
     );
     db.execSync(`DELETE FROM offline_cache`);
+    db.execSync(`DELETE FROM marketplace_drafts`);
   } catch (err) {
     console.warn('SQLite clear failed:', err);
+  }
+}
+
+function readWebDraftsFallback(): MarketplaceDraftRecord[] {
+  try {
+    if (typeof localStorage === 'undefined') return [];
+    const raw = localStorage.getItem(WEB_MARKETPLACE_DRAFTS_KEY);
+    return raw ? (JSON.parse(raw) as MarketplaceDraftRecord[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeWebDraftsFallback(drafts: MarketplaceDraftRecord[]): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(
+        WEB_MARKETPLACE_DRAFTS_KEY,
+        JSON.stringify(drafts.slice(0, 20))
+      );
+    }
+  } catch (err) {
+    console.warn('Web draft cache write failed:', err);
+  }
+}
+
+export function loadMarketplaceDraftsFromSqlite(): MarketplaceDraftRecord[] {
+  if (Platform.OS === 'web') {
+    return readWebDraftsFallback();
+  }
+  try {
+    const db = getNativeDb();
+    return db.getAllSync<MarketplaceDraftRecord>(
+      `SELECT localDraftId, title, variety, availableKg, payloadJson, photoSlotsLocalJson, draftState, updatedAtMs
+       FROM marketplace_drafts
+       ORDER BY updatedAtMs DESC`
+    );
+  } catch (err) {
+    console.warn('SQLite draft load failed:', err);
+    return [];
+  }
+}
+
+export function upsertMarketplaceDraftInSqlite(
+  draft: MarketplaceDraftRecord
+): void {
+  if (Platform.OS === 'web') {
+    const current = readWebDraftsFallback().filter(
+      (d) => d.localDraftId !== draft.localDraftId
+    );
+    writeWebDraftsFallback([draft, ...current]);
+    return;
+  }
+  try {
+    const db = getNativeDb();
+    db.runSync(
+      `INSERT OR REPLACE INTO marketplace_drafts
+       (localDraftId, title, variety, availableKg, payloadJson, photoSlotsLocalJson, draftState, updatedAtMs)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        draft.localDraftId,
+        draft.title,
+        draft.variety,
+        draft.availableKg,
+        draft.payloadJson,
+        draft.photoSlotsLocalJson,
+        draft.draftState,
+        draft.updatedAtMs,
+      ]
+    );
+  } catch (err) {
+    console.warn('SQLite draft upsert failed:', err);
+  }
+}
+
+export function markMarketplaceDraftSyncedInSqlite(
+  localDraftId: string
+): void {
+  if (Platform.OS === 'web') {
+    const updated = readWebDraftsFallback().map((d) =>
+      d.localDraftId === localDraftId
+        ? { ...d, draftState: 'SYNCED' as const, updatedAtMs: Date.now() }
+        : d
+    );
+    writeWebDraftsFallback(updated);
+    return;
+  }
+  try {
+    const db = getNativeDb();
+    db.runSync(
+      `UPDATE marketplace_drafts SET draftState = 'SYNCED', updatedAtMs = ? WHERE localDraftId = ?`,
+      [Date.now(), localDraftId]
+    );
+  } catch (err) {
+    console.warn('SQLite draft mark synced failed:', err);
+  }
+}
+
+export function deleteMarketplaceDraftInSqlite(localDraftId: string): void {
+  if (Platform.OS === 'web') {
+    const remaining = readWebDraftsFallback().filter(
+      (d) => d.localDraftId !== localDraftId
+    );
+    writeWebDraftsFallback(remaining);
+    return;
+  }
+  try {
+    const db = getNativeDb();
+    db.runSync(`DELETE FROM marketplace_drafts WHERE localDraftId = ?`, [
+      localDraftId,
+    ]);
+  } catch (err) {
+    console.warn('SQLite draft delete failed:', err);
   }
 }

@@ -8,7 +8,7 @@ import {
   SafeAreaView,
   Modal,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/theme/colors';
 import {
@@ -34,6 +34,14 @@ export default function OrchardDashboardScreen() {
   } = useWalnutCloud();
   const [tasks, setTasks] = useState(INITIAL_CARE_TASKS.slice(0, 2));
   const [activePopup, setActivePopup] = useState<'daily' | 'weekly' | null>(null);
+
+  if (
+    isSignedIn &&
+    userProfile.accountType === 'wholesaler' &&
+    !userProfile.enableOrchardTools
+  ) {
+    return <Redirect href="/(tabs)/marketplace" />;
+  }
 
   const totalEstimatedNuts = trees.reduce(
     (acc, t) => acc + t.estimatedTotalNuts,

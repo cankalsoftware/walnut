@@ -9,6 +9,7 @@ import {
 import { useConvexAuth, useMutation } from 'convex/react';
 import { anyApi } from 'convex/server';
 import ShopAdminTab from './components/ShopAdminTab';
+import MarketplaceDisputesTab from './components/MarketplaceDisputesTab';
 import LegalPages, {
   LegalRoute,
   detectLegalRoute,
@@ -21,7 +22,7 @@ import {
 
 const ADMIN_EMAIL = 'pinarlik99@gmail.com';
 
-type AdminTab = 'setup' | 'training' | 'analytics' | 'shop';
+type AdminTab = 'setup' | 'training' | 'analytics' | 'shop' | 'marketplace';
 
 interface PipelineStatusResponse {
   job: {
@@ -648,6 +649,7 @@ function AdminPortalApp({
             { id: 'training', label: '2. Dataset & Training' },
             { id: 'analytics', label: '3. Users & Analytics' },
             { id: 'shop', label: '4. Sensors & Switches Shop' },
+            { id: 'marketplace', label: '5. Marketplace Disputes' },
           ] as const
         ).map((tab) => (
           <button
@@ -2387,6 +2389,15 @@ function AdminPortalApp({
       {/* TAB 4: SENSORS & SWITCHES SHOP */}
       {activeTab === 'shop' && (
         <ShopAdminTab
+          hasConvex={hasConvex}
+          onNotice={setNotice}
+          styles={styles}
+        />
+      )}
+
+      {/* TAB 5: MARKETPLACE DISPUTES */}
+      {activeTab === 'marketplace' && (
+        <MarketplaceDisputesTab
           hasConvex={hasConvex}
           onNotice={setNotice}
           styles={styles}

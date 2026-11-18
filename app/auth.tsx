@@ -17,6 +17,7 @@ import {
   useWalnutCloud,
   GrowerExperienceLevel,
 } from '../src/providers/ConvexClerkProvider';
+import { AccountType } from '../src/data/marketplaceDemo';
 import { HelpButton } from '../src/components/HelpModal';
 
 const EXPERIENCE_LEVELS: {
@@ -55,6 +56,8 @@ export default function GrowerAccountScreen() {
   const {
     isSignedIn,
     userProfile,
+    lastRecoveryCode,
+    clearLastRecoveryCode,
     trees,
     careSetup,
     localCache,
@@ -62,15 +65,28 @@ export default function GrowerAccountScreen() {
     lastSyncMessage,
     signInWithGoogle,
     signInWithEmail,
+    registerWithPhone,
+    signInWithPhone,
+    completeMarketplaceOnboarding,
+    setEnableOrchardTools,
     signOutToOfflineMode,
     deleteAccountAndData,
     syncPendingToConvex,
     updateGrowerPreferences,
   } = useWalnutCloud();
 
+  const [authTab, setAuthTab] = useState<'register' | 'phone_login' | 'email_login'>('register');
+  const [roleChoice, setRoleChoice] = useState<AccountType>('producer');
+  const [alsoOrchardMode, setAlsoOrchardMode] = useState(false);
+  const [phoneInput, setPhoneInput] = useState('');
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
-  const [nameInput, setNameInput] = useState('Walnut Orchard Owner');
+  const [nameInput, setNameInput] = useState('');
+  const [onboardPhone, setOnboardPhone] = useState(userProfile.phone || '');
+  const [onboardName, setOnboardName] = useState(userProfile.displayName || '');
+  const [onboardRole, setOnboardRole] = useState<AccountType>(
+    userProfile.accountType || 'producer'
+  );
 
   const handleExportData = async () => {
     const payload = JSON.stringify(
@@ -175,15 +191,37 @@ export default function GrowerAccountScreen() {
               </Text>
               <Text style={styles.profileEmail}>
                 {isSignedIn
-                  ? userProfile.email
+                  ? [userProfile.phone, userProfile.email].filter(Boolean).join(' • ') ||
+                    'Complete mobile number below'
                   : 'Data saved safely on your phone until you sign in'}
               </Text>
               <Text style={styles.profileMeta}>
-                {userProfile.orchardName} • {userProfile.region}
+                {isSignedIn
+                  ? `${userProfile.accountType === 'wholesaler' ? 'Wholesaler Buyer' : 'Producer / Grower'} • 👍 ${userProfile.trustedSellerCount + userProfile.trustedBuyerCount} Trust Badges`
+                  : `${userProfile.orchardName} • ${userProfile.region}`}
               </Text>
             </View>
           </View>
         </View>
+
+        {lastRecoveryCode && (
+          <View style={styles.recoveryCard}>
+            <Text style={styles.recoveryTitle}>
+              Save Your Offline Recovery Backup Code
+            </Text>
+            <Text style={styles.recoveryCode}>{lastRecoveryCode}</Text>
+            <Text style={styles.recoveryNote}>
+              No SMS fees needed: store this code safely to recover your phone
+              account if you forget your password.
+            </Text>
+            <TouchableOpacity
+              style={styles.recoveryDoneBtn}
+              onPress={clearLastRecoveryCode}
+            >
+              <Text style={styles.recoveryDoneText}>I Saved My Code</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {lastSyncMessage && (
           <View style={styles.noticeBanner}>
@@ -202,8 +240,8 @@ export default function GrowerAccountScreen() {
             <View style={styles.sectionCard}>
               <Text style={styles.sectionTitle}>Quick Sign-In</Text>
               <Text style={styles.sectionDesc}>
-                Sign in with your Google account to keep your orchard trees and
-                harvest records backed up automatically.
+                Sign in with your Google account or register with a mobile
+                number (email is optional).
               </Text>
               <TouchableOpacity
                 style={styles.googleBtn}
@@ -214,53 +252,337 @@ export default function GrowerAccountScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Option 2: Email Sign-In */}
+            {/* Option 2: Phone-First Registration / Login */}
             <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Sign In with Email</Text>
-              <Text style={styles.inputLabel}>Orchard / Grower Name</Text>
-              <TextInput
-                style={styles.input}
-                value={nameInput}
-                onChangeText={setNameInput}
-                placeholder="e.g. Valley Walnut Farms"
-                placeholderTextColor={Colors.text.muted}
-              />
+              <View style={styles.modeSwitchRow}>
+                {(
+                  [
+                    { id: 'register', label: 'Create Account' },
+                    { id: 'phone_login', label: 'Mobile Sign In' },
+                    { id: 'email_login', label: 'Email Sign In' },
+                  ] as const
+                ).map((t) => (
+                  <TouchableOpacity
+                    key={t.id}
+                    style={[
+                      styles.modePill,
+                      authTab === t.id && styles.modePillActive,
+                    ]}
+                    onPress={() => setAuthTab(t.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.modePillText,
+                        authTab === t.id && styles.modePillTextActive,
+                      ]}
+                    >
+                      {t.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-              <Text style={styles.inputLabel}>Email Address</Text>
-              <TextInput
-                style={styles.input}
-                value={emailInput}
-                onChangeText={setEmailInput}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                placeholder="you@example.com"
-                placeholderTextColor={Colors.text.muted}
-              />
+              {authTab === 'register' && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    Register with Mobile Number
+                  </Text>
+                  <Text style={styles.inputLabel}>Select Your Account Type *</Text>
+                  <View style={styles.roleRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.roleCard,
+                        roleChoice === 'producer' && styles.roleCardActive,
+                      ]}
+                      onPress={() => setRoleChoice('producer')}
+                    >
+                      <Text style={styles.roleTitle}>🌳 Producer (Grower)</Text>
+                      <Text style={styles.roleDesc}>
+                        Track walnut fields, scan yields & sell crops in Marketplace
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.roleCard,
+                        roleChoice === 'wholesaler' && styles.roleCardActive,
+                      ]}
+                      onPress={() => setRoleChoice('wholesaler')}
+                    >
+                      <Text style={styles.roleTitle}>🏪 Wholesaler (Buyer)</Text>
+                      <Text style={styles.roleDesc}>
+                        Browse grower crops, post Buy Requests & publish how you work
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
 
-              <Text style={styles.inputLabel}>Password</Text>
-              <TextInput
-                style={styles.input}
-                value={passwordInput}
-                onChangeText={setPasswordInput}
-                secureTextEntry
-                placeholder="Your account password"
-                placeholderTextColor={Colors.text.muted}
-              />
+                  {roleChoice === 'wholesaler' && (
+                    <TouchableOpacity
+                      style={styles.optInRow}
+                      onPress={() => setAlsoOrchardMode((v) => !v)}
+                    >
+                      <Ionicons
+                        name={alsoOrchardMode ? 'checkbox' : 'square-outline'}
+                        size={18}
+                        color={Colors.walnutGreen[800]}
+                      />
+                      <Text style={styles.optInText}>
+                        Also Enable Grower / Orchard Mode (I grow walnut trees too)
+                      </Text>
+                    </TouchableOpacity>
+                  )}
 
-              <TouchableOpacity
-                style={styles.emailBtn}
-                onPress={() =>
-                  void signInWithEmail(emailInput, passwordInput, nameInput)
-                }
-              >
-                <Ionicons name="mail-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.emailBtnText}>Sign In with Email</Text>
-              </TouchableOpacity>
+                  <Text style={styles.inputLabel}>
+                    Full Name / Orchard or Company Name *
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={nameInput}
+                    onChangeText={setNameInput}
+                    placeholder="e.g. Valley Walnut Farms"
+                    placeholderTextColor={Colors.text.muted}
+                  />
+
+                  <Text style={styles.inputLabel}>
+                    Mobile Phone Number (Compulsory, with country code) *
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={phoneInput}
+                    onChangeText={setPhoneInput}
+                    keyboardType="phone-pad"
+                    placeholder="+905551234567"
+                    placeholderTextColor={Colors.text.muted}
+                  />
+
+                  <Text style={styles.inputLabel}>
+                    Email Address (Optional — leave blank if no email)
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={emailInput}
+                    onChangeText={setEmailInput}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    placeholder="Optional (not required)"
+                    placeholderTextColor={Colors.text.muted}
+                  />
+
+                  <Text style={styles.inputLabel}>
+                    Password (minimum 8 characters) *
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={passwordInput}
+                    onChangeText={setPasswordInput}
+                    secureTextEntry
+                    placeholder="At least 8 characters"
+                    placeholderTextColor={Colors.text.muted}
+                  />
+
+                  <TouchableOpacity
+                    style={styles.emailBtn}
+                    onPress={() =>
+                      void registerWithPhone({
+                        displayName: nameInput,
+                        phone: phoneInput,
+                        password: passwordInput,
+                        email: emailInput,
+                        accountType: roleChoice,
+                        enableOrchardTools: alsoOrchardMode,
+                      })
+                    }
+                  >
+                    <Ionicons name="call-outline" size={18} color="#FFFFFF" />
+                    <Text style={styles.emailBtnText}>
+                      Create {roleChoice === 'wholesaler' ? 'Wholesaler' : 'Producer'} Account
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {authTab === 'phone_login' && (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    Sign In with Mobile Number
+                  </Text>
+                  <Text style={styles.inputLabel}>Mobile Phone Number *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={phoneInput}
+                    onChangeText={setPhoneInput}
+                    keyboardType="phone-pad"
+                    placeholder="+905551234567"
+                    placeholderTextColor={Colors.text.muted}
+                  />
+
+                  <Text style={styles.inputLabel}>Password *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={passwordInput}
+                    onChangeText={setPasswordInput}
+                    secureTextEntry
+                    placeholder="8+ character password"
+                    placeholderTextColor={Colors.text.muted}
+                  />
+
+                  <TouchableOpacity
+                    style={styles.emailBtn}
+                    onPress={() => void signInWithPhone(phoneInput, passwordInput)}
+                  >
+                    <Ionicons name="log-in-outline" size={18} color="#FFFFFF" />
+                    <Text style={styles.emailBtnText}>Sign In with Mobile</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {authTab === 'email_login' && (
+                <>
+                  <Text style={styles.sectionTitle}>Sign In with Email</Text>
+                  <Text style={styles.inputLabel}>Email Address</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={emailInput}
+                    onChangeText={setEmailInput}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    placeholder="you@example.com"
+                    placeholderTextColor={Colors.text.muted}
+                  />
+
+                  <Text style={styles.inputLabel}>Password</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={passwordInput}
+                    onChangeText={setPasswordInput}
+                    secureTextEntry
+                    placeholder="Your account password"
+                    placeholderTextColor={Colors.text.muted}
+                  />
+
+                  <TouchableOpacity
+                    style={styles.emailBtn}
+                    onPress={() =>
+                      void signInWithEmail(emailInput, passwordInput, nameInput)
+                    }
+                  >
+                    <Ionicons name="mail-outline" size={18} color="#FFFFFF" />
+                    <Text style={styles.emailBtnText}>Sign In with Email</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </>
         )}
 
-        {/* Grower Care Level & Notification Preferences */}
+        {/* Signed-In Marketplace Onboarding & Role Switch */}
+        {isSignedIn && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>
+              Marketplace Role & Compulsory Mobile Setup
+            </Text>
+            {!userProfile.isMarketplaceOnboardingComplete ? (
+              <>
+                <Text style={styles.sectionDesc}>
+                  Add your compulsory mobile number and confirm your role to
+                  publish listings, complete your buyer profile, or chat in the
+                  Marketplace.
+                </Text>
+                <View style={styles.roleRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.roleCard,
+                      onboardRole === 'producer' && styles.roleCardActive,
+                    ]}
+                    onPress={() => setOnboardRole('producer')}
+                  >
+                    <Text style={styles.roleTitle}>🌳 Producer</Text>
+                    <Text style={styles.roleDesc}>Grow & sell walnuts</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.roleCard,
+                      onboardRole === 'wholesaler' && styles.roleCardActive,
+                    ]}
+                    onPress={() => setOnboardRole('wholesaler')}
+                  >
+                    <Text style={styles.roleTitle}>🏪 Wholesaler</Text>
+                    <Text style={styles.roleDesc}>Buy wholesale lots</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.inputLabel}>Display / Company Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={onboardName}
+                  onChangeText={setOnboardName}
+                  placeholder="Your name or business name"
+                />
+                <Text style={styles.inputLabel}>
+                  Compulsory Mobile Number (E.164) *
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={onboardPhone}
+                  onChangeText={setOnboardPhone}
+                  keyboardType="phone-pad"
+                  placeholder="+905551234567"
+                />
+                <TouchableOpacity
+                  style={styles.emailBtn}
+                  onPress={() =>
+                    void completeMarketplaceOnboarding({
+                      displayName: onboardName || userProfile.displayName,
+                      phone: onboardPhone,
+                      email: userProfile.email || undefined,
+                      accountType: onboardRole,
+                      enableOrchardTools: alsoOrchardMode,
+                    })
+                  }
+                >
+                  <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                  <Text style={styles.emailBtnText}>
+                    Save Role & Mobile Number
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.sectionDesc}>
+                  Registered Role:{' '}
+                  {userProfile.accountType === 'wholesaler'
+                    ? 'Wholesaler (Buyer)'
+                    : 'Producer (Walnut Grower)'}{' '}
+                  • Mobile: {userProfile.phone}
+                </Text>
+                {userProfile.accountType === 'wholesaler' && (
+                  <TouchableOpacity
+                    style={styles.optInRow}
+                    onPress={() =>
+                      void setEnableOrchardTools(!userProfile.enableOrchardTools)
+                    }
+                  >
+                    <Ionicons
+                      name={
+                        userProfile.enableOrchardTools
+                          ? 'checkbox'
+                          : 'square-outline'
+                      }
+                      size={20}
+                      color={Colors.walnutGreen[800]}
+                    />
+                    <Text style={styles.optInText}>
+                      Also Enable Grower / Orchard Mode (unlocks personal Orchard,
+                      Care Plan & Camera AI tabs)
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+          </View>
+        )}
+
+        {/* Grower Care Level & Notification Preferences (Producer or Opt-in Orchard Mode) */}
+        {(userProfile.accountType === 'producer' ||
+          userProfile.enableOrchardTools) && (
         <View style={styles.sectionCard}>
           <View
             style={{
@@ -386,6 +708,7 @@ export default function GrowerAccountScreen() {
             })}
           </View>
         </View>
+        )}
 
         {/* Orchard Backup Controls */}
         <View style={styles.sectionCard}>
@@ -804,5 +1127,106 @@ const styles = StyleSheet.create({
   topicChipTextActive: {
     color: Colors.walnutGreen[900],
     fontWeight: '800',
+  },
+  recoveryCard: {
+    backgroundColor: '#FFF7E6',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5B869',
+    marginBottom: 14,
+    gap: 6,
+  },
+  recoveryTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#7A4B07',
+  },
+  recoveryCode: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#25421B',
+    letterSpacing: 1.5,
+  },
+  recoveryNote: {
+    fontSize: 11,
+    color: '#6E5023',
+    lineHeight: 16,
+  },
+  recoveryDoneBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#25421B',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  recoveryDoneText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  modeSwitchRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 10,
+  },
+  modePill: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: Colors.walnutShell[100],
+    alignItems: 'center',
+  },
+  modePillActive: {
+    backgroundColor: Colors.walnutGreen[700],
+  },
+  modePillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.walnutShell[700],
+  },
+  modePillTextActive: {
+    color: '#FFFFFF',
+  },
+  roleRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  roleCard: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.walnutShell[200],
+    backgroundColor: '#FFFFFF',
+  },
+  roleCardActive: {
+    borderColor: Colors.walnutGreen[700],
+    backgroundColor: Colors.walnutGreen[50],
+  },
+  roleTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.walnutGreen[900],
+  },
+  roleDesc: {
+    fontSize: 10,
+    color: Colors.text.secondary,
+    marginTop: 3,
+    lineHeight: 14,
+  },
+  optInRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  optInText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.walnutGreen[900],
   },
 });

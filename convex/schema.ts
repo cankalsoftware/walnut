@@ -13,10 +13,28 @@ import { v } from 'convex/values';
 export default defineSchema({
   users: defineTable({
     clerkId: v.string(),
-    email: v.string(),
+    email: v.optional(v.string()),
     displayName: v.string(),
     role: v.optional(v.union(v.literal('admin'), v.literal('grower'))),
-    authProvider: v.union(v.literal('google'), v.literal('email')),
+    authProvider: v.union(
+      v.literal('google'),
+      v.literal('email'),
+      v.literal('phone')
+    ),
+    accountType: v.optional(
+      v.union(v.literal('producer'), v.literal('wholesaler'))
+    ),
+    phone: v.optional(v.string()),
+    phoneVerified: v.optional(v.boolean()),
+    whatsapp: v.optional(v.string()),
+    enableOrchardTools: v.optional(v.boolean()),
+    marketplaceOnboardingComplete: v.optional(v.boolean()),
+    recoveryCodeHash: v.optional(v.string()),
+    accountStatus: v.optional(
+      v.union(v.literal('active'), v.literal('suspended'), v.literal('banned'))
+    ),
+    trustedSellerCount: v.optional(v.number()),
+    trustedBuyerCount: v.optional(v.number()),
     region: v.optional(v.string()),
     orchardName: v.optional(v.string()),
     experienceLevel: v.optional(
@@ -27,7 +45,8 @@ export default defineSchema({
     createdAtMs: v.number(),
   })
     .index('by_clerk_id', ['clerkId'])
-    .index('by_email', ['email']),
+    .index('by_email', ['email'])
+    .index('by_phone', ['phone']),
 
   trees: defineTable({
     userId: v.string(), // Clerk userId
@@ -182,6 +201,9 @@ export default defineSchema({
         careNote: v.string(),
       })
     ),
+    moderationStatus: v.optional(
+      v.union(v.literal('approved'), v.literal('hidden_by_admin'))
+    ),
     createdAtMs: v.number(),
   })
     .index('by_channel', ['channelId', 'createdAtMs'])
@@ -296,5 +318,300 @@ export default defineSchema({
   })
     .index('by_user', ['userId'])
     .index('by_user_and_local_id', ['userId', 'localFieldId']),
+
+  // Marketplace: Producer Crop Listings
+  marketplaceListings: defineTable({
+    userId: v.string(),
+    localDraftId: v.optional(v.string()),
+    producerName: v.string(),
+    orchardFieldLocalId: v.optional(v.string()),
+    verifiedOrchardSummary: v.optional(
+      v.object({
+        treeCount: v.number(),
+        plantedYear: v.number(),
+        sampledDiameterMm: v.optional(v.number()),
+      })
+    ),
+    title: v.string(),
+    description: v.string(),
+    variety: v.string(),
+    lotStage: v.union(
+      v.literal('pre_harvest'),
+      v.literal('harvesting'),
+      v.literal('in_storage')
+    ),
+    form: v.union(v.literal('in_shell'), v.literal('shelled_kernel')),
+    availableKg: v.number(),
+    minOrderKg: v.optional(v.number()),
+    avgDiameterMm: v.optional(v.number()),
+    kernelGrade: v.union(
+      v.literal('extra_light'),
+      v.literal('light'),
+      v.literal('amber'),
+      v.literal('mixed')
+    ),
+    moisturePct: v.optional(v.number()),
+    packagingType: v.union(
+      v.literal('bulk_bin'),
+      v.literal('mesh_25kg'),
+      v.literal('jute_50kg'),
+      v.literal('big_bag_1t'),
+      v.literal('buyer_bags')
+    ),
+    dryingMethod: v.union(
+      v.literal('green_in_hull'),
+      v.literal('washed_wet'),
+      v.literal('mechanical_dryer'),
+      v.literal('sun_dried')
+    ),
+    loadingLogistics: v.union(
+      v.literal('farm_gate_forklift'),
+      v.literal('producer_delivers')
+    ),
+    pricingMode: v.union(
+      v.literal('fixed_per_kg'),
+      v.literal('contact_for_quote')
+    ),
+    pricePerKg: v.optional(v.number()),
+    currency: v.union(v.literal('USD'), v.literal('TRY'), v.literal('EUR')),
+    region: v.string(),
+    approxLat: v.optional(v.number()),
+    approxLng: v.optional(v.number()),
+    contact: v.object({
+      phone: v.string(),
+      whatsapp: v.optional(v.string()),
+      email: v.optional(v.string()),
+      showPhone: v.boolean(),
+      showWhatsapp: v.boolean(),
+      showEmail: v.boolean(),
+      allowInAppChat: v.boolean(),
+    }),
+    photoSlots: v.array(
+      v.object({
+        slotKey: v.union(
+          v.literal('pile'),
+          v.literal('caliber'),
+          v.literal('crack_test'),
+          v.literal('kernel_color'),
+          v.literal('storage')
+        ),
+        storageId: v.id('_storage'),
+      })
+    ),
+    status: v.union(
+      v.literal('active'),
+      v.literal('negotiating'),
+      v.literal('sold'),
+      v.literal('archived')
+    ),
+    moderationStatus: v.optional(
+      v.union(v.literal('approved'), v.literal('hidden_by_admin'))
+    ),
+    createdAtMs: v.number(),
+    updatedAtMs: v.number(),
+  })
+    .index('by_user', ['userId', 'updatedAtMs'])
+    .index('by_user_and_local_draft', ['userId', 'localDraftId'])
+    .index('by_status_updated', ['status', 'updatedAtMs'])
+    .index('by_variety_status', ['variety', 'status', 'updatedAtMs']),
+
+  // Marketplace: Wholesaler Public Buyer Profiles
+  wholesalerProfiles: defineTable({
+    userId: v.string(),
+    companyName: v.string(),
+    contactName: v.string(),
+    region: v.string(),
+    approxLat: v.optional(v.number()),
+    approxLng: v.optional(v.number()),
+    bio: v.string(),
+    howWeWork: v.string(),
+    preferredVarieties: v.array(v.string()),
+    minPurchaseKg: v.optional(v.number()),
+    maxPurchaseKg: v.optional(v.number()),
+    contact: v.object({
+      phone: v.string(),
+      whatsapp: v.optional(v.string()),
+      email: v.optional(v.string()),
+      showPhone: v.boolean(),
+      showWhatsapp: v.boolean(),
+      showEmail: v.boolean(),
+      allowInAppChat: v.boolean(),
+    }),
+    isProfileComplete: v.boolean(),
+    moderationStatus: v.optional(
+      v.union(v.literal('approved'), v.literal('hidden_by_admin'))
+    ),
+    updatedAtMs: v.number(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_complete_updated', ['isProfileComplete', 'updatedAtMs']),
+
+  // Marketplace: Wholesaler Active Buy Requests (multiple per buyer)
+  wholesalerBuyRequests: defineTable({
+    userId: v.string(),
+    companyName: v.string(),
+    title: v.string(),
+    variety: v.string(),
+    form: v.union(v.literal('in_shell'), v.literal('shelled_kernel')),
+    kernelGrade: v.optional(
+      v.union(
+        v.literal('extra_light'),
+        v.literal('light'),
+        v.literal('amber'),
+        v.literal('mixed')
+      )
+    ),
+    minDiameterMm: v.optional(v.number()),
+    targetKg: v.number(),
+    targetPricePerKg: v.optional(v.number()),
+    currency: v.union(v.literal('USD'), v.literal('TRY'), v.literal('EUR')),
+    region: v.string(),
+    note: v.string(),
+    status: v.union(v.literal('active'), v.literal('closed')),
+    moderationStatus: v.optional(
+      v.union(v.literal('approved'), v.literal('hidden_by_admin'))
+    ),
+    updatedAtMs: v.number(),
+  })
+    .index('by_user', ['userId', 'updatedAtMs'])
+    .index('by_status_variety', ['status', 'variety', 'updatedAtMs']),
+
+  // Marketplace: Private 1-on-1 B2B Threads & Messages
+  marketplaceThreads: defineTable({
+    listingId: v.optional(v.id('marketplaceListings')),
+    buyRequestId: v.optional(v.id('wholesalerBuyRequests')),
+    producerUserId: v.string(),
+    wholesalerUserId: v.string(),
+    subjectTitle: v.string(),
+    hasProducerReplied: v.boolean(),
+    hasWholesalerReplied: v.boolean(),
+    lastMessageAtMs: v.number(),
+    lastMessagePreview: v.string(),
+    createdAtMs: v.number(),
+  })
+    .index('by_producer', ['producerUserId', 'lastMessageAtMs'])
+    .index('by_wholesaler', ['wholesalerUserId', 'lastMessageAtMs'])
+    .index('by_pair_listing', ['producerUserId', 'wholesalerUserId', 'listingId']),
+
+  marketplaceMessages: defineTable({
+    threadId: v.id('marketplaceThreads'),
+    senderUserId: v.string(),
+    senderRole: v.union(v.literal('producer'), v.literal('wholesaler')),
+    messageType: v.union(
+      v.literal('text'),
+      v.literal('sample_request'),
+      v.literal('price_offer'),
+      v.literal('exact_gps_pin')
+    ),
+    body: v.string(),
+    structuredPayload: v.optional(
+      v.union(
+        v.object({
+          kind: v.literal('sample_request'),
+          sampleWeightKg: v.number(),
+          addressNote: v.string(),
+        }),
+        v.object({
+          kind: v.literal('price_offer'),
+          quantityKg: v.number(),
+          pricePerKg: v.number(),
+          currency: v.union(
+            v.literal('USD'),
+            v.literal('TRY'),
+            v.literal('EUR')
+          ),
+          pickupWindow: v.string(),
+        }),
+        v.object({
+          kind: v.literal('exact_gps_pin'),
+          latitude: v.number(),
+          longitude: v.number(),
+          fieldLabel: v.string(),
+        })
+      )
+    ),
+    attachmentStorageId: v.optional(v.id('_storage')),
+    scrubbedOnDeletion: v.optional(v.boolean()),
+    createdAtMs: v.number(),
+  })
+    .index('by_thread_created', ['threadId', 'createdAtMs'])
+    .index('by_sender', ['senderUserId']),
+
+  // Marketplace: Peer Trust Badges & Dispute Audit Archive
+  marketplaceTrustFeedback: defineTable({
+    recipientUserId: v.optional(v.string()),
+    recipientRole: v.union(v.literal('producer'), v.literal('wholesaler')),
+    authorUserId: v.optional(v.string()),
+    authorRole: v.union(v.literal('producer'), v.literal('wholesaler')),
+    badgeType: v.union(
+      v.literal('trusted_seller'),
+      v.literal('trusted_buyer')
+    ),
+    threadId: v.id('marketplaceThreads'),
+    comment: v.string(),
+    visibilityStatus: v.union(
+      v.literal('published'),
+      v.literal('dispute_pending'),
+      v.literal('cleared_unfounded'),
+      v.literal('policy_removed')
+    ),
+    hiddenFromPublication: v.boolean(),
+    disputeReason: v.optional(v.string()),
+    reDisputeLocked: v.optional(v.boolean()),
+    resolvedByAdminId: v.optional(v.string()),
+    resolvedAtMs: v.optional(v.number()),
+    anonymizedPhoneHash: v.optional(v.string()),
+    expiresAtMs: v.optional(v.number()),
+    createdAtMs: v.number(),
+  })
+    .index('by_recipient', ['recipientUserId', 'createdAtMs'])
+    .index('by_author_recipient_type', [
+      'authorUserId',
+      'recipientUserId',
+      'badgeType',
+    ])
+    .index('by_dispute_status', ['visibilityStatus', 'createdAtMs']),
+
+  // Marketplace: Pre-aggregated O(1) Market Pulse Metrics
+  marketPulseStats: defineTable({
+    key: v.string(),
+    variety: v.string(),
+    form: v.union(v.literal('in_shell'), v.literal('shelled_kernel')),
+    currency: v.union(v.literal('USD'), v.literal('TRY'), v.literal('EUR')),
+    activeListingCount: v.number(),
+    totalAvailableKg: v.number(),
+    minPricePerKg: v.optional(v.number()),
+    maxPricePerKg: v.optional(v.number()),
+    activeBuyRequestCount: v.number(),
+    totalDemandKg: v.number(),
+    updatedAtMs: v.number(),
+  }).index('by_key', ['key']),
+
+  // Marketplace & Community: Google Play UGC Reporting & Blocking
+  marketplaceReports: defineTable({
+    reporterUserId: v.string(),
+    targetType: v.union(
+      v.literal('listing'),
+      v.literal('wholesaler_profile'),
+      v.literal('buy_request'),
+      v.literal('thread_message'),
+      v.literal('group_message')
+    ),
+    targetId: v.string(),
+    reportedUserId: v.string(),
+    reason: v.string(),
+    status: v.union(
+      v.literal('open'),
+      v.literal('actioned'),
+      v.literal('dismissed')
+    ),
+    createdAtMs: v.number(),
+  }).index('by_status', ['status', 'createdAtMs']),
+
+  userBlocks: defineTable({
+    blockerUserId: v.string(),
+    blockedUserId: v.string(),
+    createdAtMs: v.number(),
+  }).index('by_blocker', ['blockerUserId', 'blockedUserId']),
 });
 

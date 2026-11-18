@@ -9,7 +9,9 @@
  */
 
 import type * as careBroadcasts from "../careBroadcasts.js";
+import type * as lib_auth from "../lib/auth.js";
 import type * as logs from "../logs.js";
+import type * as marketplace from "../marketplace.js";
 import type * as orchardFields from "../orchardFields.js";
 import type * as shop from "../shop.js";
 import type * as sync from "../sync.js";
@@ -23,7 +25,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   careBroadcasts: typeof careBroadcasts;
+  "lib/auth": typeof lib_auth;
   logs: typeof logs;
+  marketplace: typeof marketplace;
   orchardFields: typeof orchardFields;
   shop: typeof shop;
   sync: typeof sync;

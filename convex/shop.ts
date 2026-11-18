@@ -1,24 +1,6 @@
-import { mutation, MutationCtx, query } from './_generated/server';
+import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
-
-const ADMIN_EMAIL = 'pinarlik99@gmail.com';
-
-async function requireAdmin(ctx: MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
-    throw new Error('Unauthorized: admin sign-in required');
-  }
-  const email = (identity.email ?? '').trim().toLowerCase();
-  const user = await ctx.db
-    .query('users')
-    .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
-    .first();
-
-  if (email !== ADMIN_EMAIL && user?.role !== 'admin') {
-    throw new Error('Forbidden: administrator permissions required');
-  }
-  return identity;
-}
+import { requireAdmin } from './lib/auth';
 
 /**
  * Generates a short-lived Convex upload URL so the Web Admin Portal

@@ -7,7 +7,12 @@ import { useWalnutCloud } from '../../src/providers/ConvexClerkProvider';
 
 export default function TabsLayout() {
   const router = useRouter();
-  const { isSignedIn } = useWalnutCloud();
+  const { isSignedIn, userProfile } = useWalnutCloud();
+
+  const showOrchardTabs =
+    !isSignedIn ||
+    userProfile.accountType === 'producer' ||
+    userProfile.enableOrchardTools;
 
   const lockedTabListeners = {
     tabPress: (e: { preventDefault: () => void }) => {
@@ -32,6 +37,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Orchard',
+          href: showOrchardTabs ? undefined : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="leaf" size={size} color={color} />
           ),
@@ -42,6 +48,7 @@ export default function TabsLayout() {
         listeners={lockedTabListeners}
         options={{
           title: isSignedIn ? 'Care Plan' : 'Care Plan 🔒',
+          href: showOrchardTabs ? undefined : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons
               name={isSignedIn ? 'calendar' : 'lock-closed'}
@@ -56,6 +63,7 @@ export default function TabsLayout() {
         listeners={lockedTabListeners}
         options={{
           title: 'Camera',
+          href: showOrchardTabs ? undefined : null,
           tabBarLabel: () => null,
           tabBarIcon: ({ focused }) => (
             <View
@@ -71,6 +79,20 @@ export default function TabsLayout() {
                 color="#FFFFFF"
               />
             </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="marketplace"
+        listeners={lockedTabListeners}
+        options={{
+          title: isSignedIn ? 'Marketplace' : 'Market 🔒',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons
+              name={isSignedIn ? 'storefront' : 'lock-closed'}
+              size={size}
+              color={isSignedIn ? color : Colors.text.muted}
+            />
           ),
         }}
       />
@@ -93,6 +115,7 @@ export default function TabsLayout() {
         listeners={lockedTabListeners}
         options={{
           title: isSignedIn ? 'Setup & Data' : 'Setup 🔒',
+          href: showOrchardTabs ? null : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons
               name={isSignedIn ? 'options' : 'lock-closed'}

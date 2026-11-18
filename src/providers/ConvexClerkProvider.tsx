@@ -16,9 +16,16 @@ import {
   useAuth,
   useOAuth,
   useSignIn,
+  useSignUp,
   useUser,
 } from '@clerk/expo';
-import { ConvexReactClient, useConvexAuth, useMutation, useQuery } from 'convex/react';
+import {
+  ConvexReactClient,
+  useAction,
+  useConvexAuth,
+  useMutation,
+  useQuery,
+} from 'convex/react';
 import { anyApi } from 'convex/server';
 import { ConvexProviderWithClerk } from 'convex/react-clerk';
 import {
@@ -28,10 +35,15 @@ import {
 } from '../services/offlineSyncService';
 import {
   clearAllSqliteCache,
+  deleteMarketplaceDraftInSqlite,
   insertOfflineRecordToSqlite,
+  loadMarketplaceDraftsFromSqlite,
   loadOfflineCacheFromSqlite,
+  markMarketplaceDraftSyncedInSqlite,
   markRecordsSyncedInSqlite,
+  MarketplaceDraftRecord,
   purgeExpiredSyncedInSqlite,
+  upsertMarketplaceDraftInSqlite,
 } from '../services/sqliteCache';
 import {
   BoundaryPin,
@@ -39,6 +51,29 @@ import {
   DEFAULT_TREE_SPACING_METERS,
 } from '../utils/orchardGeometry';
 import { INITIAL_TREES, WalnutTree } from '../data/walnutLifecycle';
+import {
+  AccountType,
+  CurrencyCode,
+  CropForm,
+  DEMO_BUY_REQUESTS,
+  DEMO_MARKETPLACE_LISTINGS,
+  DEMO_MARKET_PULSE,
+  DEMO_WHOLESALERS,
+  DryingMethod,
+  KernelGrade,
+  LoadingLogistics,
+  LotStage,
+  MarketplaceListingItem,
+  MarketplaceMessageItem,
+  MarketplaceThreadItem,
+  MarketPulseItem,
+  PackagingType,
+  PhotoSlotKey,
+  RoleGroupMessageItem,
+  TrustFeedbackPublicItem,
+  WholesalerBuyRequestItem,
+  WholesalerDirectoryItem,
+} from '../data/marketplaceDemo';
 import type { SyncAckResult } from '../../convex/sync';
 
 /**
@@ -78,7 +113,15 @@ export interface GrowerUserProfile {
   clerkId: string;
   displayName: string;
   email: string;
-  authProvider: 'google' | 'email';
+  phone: string;
+  whatsapp?: string;
+  authProvider: 'google' | 'email' | 'phone';
+  accountType: AccountType;
+  enableOrchardTools: boolean;
+  isMarketplaceOnboardingComplete: boolean;
+  isWholesalerProfileComplete: boolean;
+  trustedSellerCount: number;
+  trustedBuyerCount: number;
   region: string;
   orchardName: string;
   experienceLevel: GrowerExperienceLevel;
@@ -134,6 +177,74 @@ export interface CareFeedItem {
   createdAtMs: number;
 }
 
+export interface PublishCropListingInput {
+  listingId?: string;
+  localDraftId?: string;
+  orchardFieldLocalId?: string;
+  title: string;
+  description: string;
+  variety: string;
+  lotStage: LotStage;
+  form: CropForm;
+  availableKg: number;
+  minOrderKg?: number;
+  avgDiameterMm?: number;
+  kernelGrade: KernelGrade;
+  moisturePct?: number;
+  packagingType: PackagingType;
+  dryingMethod: DryingMethod;
+  loadingLogistics: LoadingLogistics;
+  pricingMode: 'fixed_per_kg' | 'contact_for_quote';
+  pricePerKg?: number;
+  currency: CurrencyCode;
+  region: string;
+  rawLat?: number;
+  rawLng?: number;
+  contactPhone?: string;
+  contactWhatsapp?: string;
+  contactEmail?: string;
+  showPhone: boolean;
+  showWhatsapp: boolean;
+  showEmail: boolean;
+  allowInAppChat: boolean;
+  photoUris: Array<{ slotKey: PhotoSlotKey; localUri: string; storageId?: string }>;
+}
+
+export interface WholesalerProfileInput {
+  companyName: string;
+  contactName: string;
+  region: string;
+  rawLat?: number;
+  rawLng?: number;
+  bio: string;
+  howWeWork: string;
+  preferredVarieties: string[];
+  minPurchaseKg?: number;
+  maxPurchaseKg?: number;
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  showPhone: boolean;
+  showWhatsapp: boolean;
+  showEmail: boolean;
+  allowInAppChat: boolean;
+}
+
+export interface BuyRequestInput {
+  requestId?: string;
+  title: string;
+  variety: string;
+  form: CropForm;
+  kernelGrade?: KernelGrade;
+  minDiameterMm?: number;
+  targetKg: number;
+  targetPricePerKg?: number;
+  currency: CurrencyCode;
+  region: string;
+  note: string;
+  status: 'active' | 'closed';
+}
+
 const makeDefaultQuadrants = (seedNuts = 0): QuadrantSample[] => [
   {
     quadrantId: 'NW',
@@ -149,7 +260,9 @@ const makeDefaultQuadrants = (seedNuts = 0): QuadrantSample[] => [
     quadrantId: 'NE',
     sampledTreeLabel: 'NE Sample Tree #1',
     scannedNutsPerTree: seedNuts > 0 ? seedNuts + 18 : 0,
-    estimatedWeightKgPerTree: Number(((seedNuts > 0 ? seedNuts + 18 : 0) * 0.013).toFixed(1)),
+    estimatedWeightKgPerTree: Number(
+      ((seedNuts > 0 ? seedNuts + 18 : 0) * 0.013).toFixed(1)
+    ),
     note: '',
     evidenceCount: 0,
     evidenceLocalUris: [],
@@ -159,7 +272,9 @@ const makeDefaultQuadrants = (seedNuts = 0): QuadrantSample[] => [
     quadrantId: 'SW',
     sampledTreeLabel: 'SW Sample Tree #1',
     scannedNutsPerTree: seedNuts > 0 ? Math.max(0, seedNuts - 12) : 0,
-    estimatedWeightKgPerTree: Number((Math.max(0, seedNuts > 0 ? seedNuts - 12 : 0) * 0.013).toFixed(1)),
+    estimatedWeightKgPerTree: Number(
+      (Math.max(0, seedNuts > 0 ? seedNuts - 12 : 0) * 0.013).toFixed(1)
+    ),
     note: '',
     evidenceCount: 0,
     evidenceLocalUris: [],
@@ -169,7 +284,9 @@ const makeDefaultQuadrants = (seedNuts = 0): QuadrantSample[] => [
     quadrantId: 'SE',
     sampledTreeLabel: 'SE Sample Tree #1',
     scannedNutsPerTree: seedNuts > 0 ? seedNuts + 6 : 0,
-    estimatedWeightKgPerTree: Number(((seedNuts > 0 ? seedNuts + 6 : 0) * 0.013).toFixed(1)),
+    estimatedWeightKgPerTree: Number(
+      ((seedNuts > 0 ? seedNuts + 6 : 0) * 0.013).toFixed(1)
+    ),
     note: '',
     evidenceCount: 0,
     evidenceLocalUris: [],
@@ -197,8 +314,8 @@ const INITIAL_FIELDS: OrchardFieldBlock[] = [
     name: 'South Slope • Howard Mix',
     variety: 'Howard',
     plantedYear: 2021,
-    treeCount: 85,
-    areaHectares: 1.8,
+    treeCount: 80,
+    areaHectares: 1.6,
     canopyDensity: 'open',
     seasonYear: new Date().getFullYear(),
     latitude: 38.5412,
@@ -213,6 +330,8 @@ export interface WalnutCloudContextValue {
   isSignedIn: boolean;
   isOnlineSyncReady: boolean;
   userProfile: GrowerUserProfile;
+  lastRecoveryCode: string | null;
+  clearLastRecoveryCode: () => void;
   trees: WalnutTree[];
   addOrchardTree: (name: string, variety: WalnutTree['variety']) => void;
   fields: OrchardFieldBlock[];
@@ -244,6 +363,7 @@ export interface WalnutCloudContextValue {
   publishedCareBanner: string | null;
   careFeed: CareFeedItem[];
   localCache: LocalCachedRecord[];
+  marketplaceDrafts: MarketplaceDraftRecord[];
   syncMode: 'auto' | 'manual';
   setSyncMode: (mode: 'auto' | 'manual') => void;
   pendingUploadCount: number;
@@ -255,6 +375,24 @@ export interface WalnutCloudContextValue {
     password?: string,
     displayName?: string
   ) => Promise<void>;
+  registerWithPhone: (params: {
+    displayName: string;
+    phone: string;
+    password: string;
+    email?: string;
+    accountType: AccountType;
+    enableOrchardTools?: boolean;
+  }) => Promise<{ ok: boolean; recoveryCode?: string }>;
+  signInWithPhone: (phone: string, password: string) => Promise<boolean>;
+  completeMarketplaceOnboarding: (params: {
+    displayName: string;
+    phone: string;
+    whatsapp?: string;
+    email?: string;
+    accountType: AccountType;
+    enableOrchardTools?: boolean;
+  }) => Promise<boolean>;
+  setEnableOrchardTools: (enabled: boolean) => Promise<void>;
   signOutToOfflineMode: () => Promise<void>;
   deleteAccountAndData: () => Promise<boolean>;
   syncPendingToConvex: () => Promise<{ syncedCount: number }>;
@@ -264,6 +402,87 @@ export interface WalnutCloudContextValue {
     title: string,
     sizeKb?: number
   ) => void;
+  // Marketplace state & actions
+  marketplaceListings: MarketplaceListingItem[];
+  myListings: MarketplaceListingItem[];
+  wholesalers: WholesalerDirectoryItem[];
+  myWholesalerProfile: WholesalerProfileInput | null;
+  buyRequests: WholesalerBuyRequestItem[];
+  marketplaceThreads: MarketplaceThreadItem[];
+  activeThreadId: string | null;
+  setActiveThreadId: (threadId: string | null) => void;
+  activeThreadMessages: MarketplaceMessageItem[];
+  roleGroupMessages: RoleGroupMessageItem[];
+  marketPulse: MarketPulseItem[];
+  inspectingUserId: string | null;
+  setInspectingUserId: (userId: string | null) => void;
+  inspectingTrustFeedback: TrustFeedbackPublicItem[];
+  publishOrUpdateCropListing: (input: PublishCropListingInput) => Promise<string | null>;
+  saveOfflineCropDraft: (
+    input: PublishCropListingInput,
+    draftState: 'EDITING' | 'QUEUED_PUBLISH'
+  ) => string;
+  deleteOfflineCropDraft: (localDraftId: string) => void;
+  syncPendingMarketplaceDrafts: () => Promise<{ syncedCount: number }>;
+  updateListingStatus: (
+    listingId: string,
+    status: 'active' | 'negotiating' | 'sold' | 'archived'
+  ) => Promise<void>;
+  saveWholesalerBuyerProfile: (input: WholesalerProfileInput) => Promise<boolean>;
+  saveWholesalerBuyRequest: (input: BuyRequestInput) => Promise<void>;
+  openOrCreateB2BThread: (params: {
+    listingId?: string;
+    buyRequestId?: string;
+    counterpartyUserId: string;
+  }) => Promise<string | null>;
+  revealContactAndStartThread: (params: {
+    listingId?: string;
+    counterpartyUserId: string;
+  }) => Promise<{
+    threadId: string | null;
+    phone: string | null;
+    whatsapp: string | null;
+    email: string | null;
+  } | null>;
+  sendB2BMessage: (threadId: string, body: string) => Promise<void>;
+  sendB2BStructuredAction: (
+    threadId: string,
+    payload:
+      | { kind: 'sample_request'; sampleWeightKg: number; addressNote: string }
+      | {
+          kind: 'price_offer';
+          quantityKg: number;
+          pricePerKg: number;
+          currency: CurrencyCode;
+          pickupWindow: string;
+        }
+      | {
+          kind: 'exact_gps_pin';
+          latitude: number;
+          longitude: number;
+          fieldLabel: string;
+        }
+  ) => Promise<void>;
+  postRoleGroupMessage: (text: string) => Promise<void>;
+  awardCounterpartyBadge: (params: {
+    threadId: string;
+    recipientUserId: string;
+    badgeType: 'trusted_seller' | 'trusted_buyer';
+    comment: string;
+  }) => Promise<boolean>;
+  submitBadgeDispute: (feedbackId: string, disputeReason: string) => Promise<void>;
+  submitContentReport: (params: {
+    targetType:
+      | 'listing'
+      | 'wholesaler_profile'
+      | 'buy_request'
+      | 'thread_message'
+      | 'group_message';
+    targetId: string;
+    reportedUserId: string;
+    reason: string;
+  }) => Promise<void>;
+  blockUserAccount: (targetUserId: string) => Promise<void>;
 }
 
 const DEFAULT_CARE_SETUP: OrchardCareSetup = {
@@ -278,8 +497,15 @@ const DEFAULT_CARE_SETUP: OrchardCareSetup = {
 const DEFAULT_PROFILE: GrowerUserProfile = {
   clerkId: 'user_walnutiq_grower_01',
   displayName: 'Orchard Grower',
-  email: 'grower@walnutiq.app',
-  authProvider: 'google',
+  email: '',
+  phone: '',
+  authProvider: 'phone',
+  accountType: 'producer',
+  enableOrchardTools: false,
+  isMarketplaceOnboardingComplete: false,
+  isWholesalerProfileComplete: false,
+  trustedSellerCount: 0,
+  trustedBuyerCount: 0,
   region: 'Central Valley / Zone 8b',
   orchardName: 'My Walnut Orchard',
   experienceLevel: 'experienced',
@@ -290,6 +516,23 @@ const DEFAULT_PROFILE: GrowerUserProfile = {
 const WalnutCloudContext = createContext<WalnutCloudContextValue | undefined>(
   undefined
 );
+
+function generateRecoveryCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const seg = () =>
+    Array.from({ length: 4 }, () =>
+      chars.charAt(Math.floor(Math.random() * chars.length))
+    ).join('');
+  return `WQ-${seg()}-${seg()}`;
+}
+
+function normalizePhoneDigits(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length < 8 || digits.length > 15) {
+    throw new Error('Enter a valid mobile number with country code (8–15 digits).');
+  }
+  return `+${digits}`;
+}
 
 const rawConvexUrl = process.env.EXPO_PUBLIC_CONVEX_URL ?? '';
 const rawClerkKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
@@ -305,7 +548,7 @@ const convexClient = hasLiveConvexAndClerkKeys
   : null;
 
 /**
- * Live Clerk + Convex + SQLite State Provider (mounted inside ClerkProvider & ConvexProviderWithClerk)
+ * Live Clerk + Convex + SQLite State Provider
  */
 function LiveClerkConvexStateProvider({
   children,
@@ -317,12 +560,25 @@ function LiveClerkConvexStateProvider({
   const { user } = useUser();
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
   const { signIn } = useSignIn();
+  const { signUp } = useSignUp();
+
+  const isSignedIn = Boolean(clerkSignedIn);
+  const canQueryCloud = Boolean(isSignedIn && convexAuthenticated);
 
   const syncUserMutation = useMutation(anyApi.users.syncCurrentUser);
+  const completeOnboardingMutation = useMutation(
+    anyApi.users.completeMarketplaceOnboarding
+  );
+  const updateDualRoleMutation = useMutation(
+    anyApi.users.updateDualRolePreference
+  );
   const updateCarePreferencesMutation = useMutation(
     anyApi.users.updateGrowerCarePreferences
   );
   const deleteAccountMutation = useMutation(anyApi.users.deleteMyAccountData);
+  const deleteClerkAndConvexAction = useAction(
+    anyApi.users.deleteClerkAndConvexAccount
+  );
   const syncOfflineBatchMutation = useMutation(anyApi.sync.syncOfflineBatch);
   const upsertFieldMutation = useMutation(
     anyApi.orchardFields.upsertOrchardField
@@ -333,19 +589,169 @@ function LiveClerkConvexStateProvider({
   const attachEvidenceMutation = useMutation(
     anyApi.orchardFields.attachQuadrantEvidence
   );
+
+  // Marketplace mutations
+  const generateListingPhotoUrlMutation = useMutation(
+    anyApi.marketplace.generateListingPhotoUrl
+  );
+  const createOrUpdateListingMutation = useMutation(
+    anyApi.marketplace.createOrUpdateListing
+  );
+  const markListingStatusMutation = useMutation(
+    anyApi.marketplace.markListingStatus
+  );
+  const upsertWholesalerProfileMutation = useMutation(
+    anyApi.marketplace.upsertWholesalerProfile
+  );
+  const upsertBuyRequestMutation = useMutation(
+    anyApi.marketplace.upsertBuyRequest
+  );
+  const getOrCreateThreadMutation = useMutation(
+    anyApi.marketplace.getOrCreateThread
+  );
+  const revealContactMutation = useMutation(
+    anyApi.marketplace.revealContactAndEnsureThread
+  );
+  const sendThreadMessageMutation = useMutation(
+    anyApi.marketplace.sendThreadMessage
+  );
+  const sendStructuredActionMutation = useMutation(
+    anyApi.marketplace.sendStructuredAction
+  );
+  const sendRoleGroupMessageMutation = useMutation(
+    anyApi.marketplace.sendRoleGroupMessage
+  );
+  const awardTrustBadgeMutation = useMutation(
+    anyApi.marketplace.awardTrustBadge
+  );
+  const requestDisputeMutation = useMutation(
+    anyApi.marketplace.requestBadgeRemovalDispute
+  );
+  const reportContentMutation = useMutation(
+    anyApi.marketplace.reportMarketplaceContent
+  );
+  const blockUserMutation = useMutation(anyApi.marketplace.blockMarketplaceUser);
+
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [inspectingUserId, setInspectingUserId] = useState<string | null>(null);
+  const [lastRecoveryCode, setLastRecoveryCode] = useState<string | null>(null);
+
+  // Cloud queries — always 'skip' when unauthenticated so guests never hit live DB
+  const liveUserRoleInfo = useQuery(
+    anyApi.users.getUserRole,
+    canQueryCloud ? {} : 'skip'
+  ) as
+    | {
+        role: 'admin' | 'grower';
+        isAdmin: boolean;
+        accountType: AccountType | null;
+        phone: string | null;
+        whatsapp: string | null;
+        email: string | null;
+        displayName: string | null;
+        enableOrchardTools: boolean;
+        marketplaceOnboardingComplete: boolean;
+        trustedSellerCount: number;
+        trustedBuyerCount: number;
+        isWholesalerProfileComplete: boolean;
+      }
+    | undefined;
+
   const liveCareDefaults = useQuery(anyApi.careBroadcasts.getCareDefaults) as
     | { dailyGuidanceNote?: string }
     | null
     | undefined;
-  const liveCareFeed = useQuery(anyApi.careBroadcasts.listMyCareFeed) as
-    | CareFeedItem[]
+  const liveCareFeed = useQuery(
+    anyApi.careBroadcasts.listMyCareFeed,
+    canQueryCloud ? {} : 'skip'
+  ) as CareFeedItem[] | undefined;
+
+  const liveListings = useQuery(
+    anyApi.marketplace.listMarketplaceListings,
+    canQueryCloud ? {} : 'skip'
+  ) as MarketplaceListingItem[] | undefined;
+
+  const liveMyListings = useQuery(
+    anyApi.marketplace.listMyListings,
+    canQueryCloud ? {} : 'skip'
+  ) as MarketplaceListingItem[] | undefined;
+
+  const liveWholesalers = useQuery(
+    anyApi.marketplace.listWholesalers,
+    canQueryCloud ? {} : 'skip'
+  ) as WholesalerDirectoryItem[] | undefined;
+
+  const liveMyWholesalerProfile = useQuery(
+    anyApi.marketplace.getMyWholesalerProfile,
+    canQueryCloud ? {} : 'skip'
+  ) as
+    | {
+        companyName: string;
+        contactName: string;
+        region: string;
+        bio: string;
+        howWeWork: string;
+        preferredVarieties: string[];
+        minPurchaseKg?: number;
+        maxPurchaseKg?: number;
+        contact: {
+          phone: string;
+          whatsapp?: string;
+          email?: string;
+          showPhone: boolean;
+          showWhatsapp: boolean;
+          showEmail: boolean;
+          allowInAppChat: boolean;
+        };
+      }
+    | null
     | undefined;
+
+  const liveBuyRequests = useQuery(
+    anyApi.marketplace.listActiveBuyRequests,
+    canQueryCloud ? {} : 'skip'
+  ) as WholesalerBuyRequestItem[] | undefined;
+
+  const liveThreads = useQuery(
+    anyApi.marketplace.listMyThreads,
+    canQueryCloud ? {} : 'skip'
+  ) as MarketplaceThreadItem[] | undefined;
+
+  const liveThreadMessages = useQuery(
+    anyApi.marketplace.listThreadMessages,
+    canQueryCloud && activeThreadId ? { threadId: activeThreadId } : 'skip'
+  ) as MarketplaceMessageItem[] | undefined;
+
+  const currentAccountType: AccountType =
+    liveUserRoleInfo?.accountType === 'wholesaler' ? 'wholesaler' : 'producer';
+  const roleChannelId: 'sellers_only' | 'buyers_only' =
+    currentAccountType === 'wholesaler' ? 'buyers_only' : 'sellers_only';
+
+  const liveRoleMessages = useQuery(
+    anyApi.marketplace.listRoleGroupMessages,
+    canQueryCloud && liveUserRoleInfo?.accountType
+      ? { channelId: roleChannelId }
+      : 'skip'
+  ) as RoleGroupMessageItem[] | undefined;
+
+  const liveMarketPulse = useQuery(
+    anyApi.marketplace.getMarketPulseStats,
+    canQueryCloud ? {} : 'skip'
+  ) as MarketPulseItem[] | undefined;
+
+  const liveTrustFeedback = useQuery(
+    anyApi.marketplace.listTrustFeedbackForUser,
+    canQueryCloud && inspectingUserId ? { targetUserId: inspectingUserId } : 'skip'
+  ) as TrustFeedbackPublicItem[] | undefined;
 
   const [trees, setTrees] = useState<WalnutTree[]>(INITIAL_TREES);
   const [fields, setFields] = useState<OrchardFieldBlock[]>(INITIAL_FIELDS);
   const [localCache, setLocalCache] = useState<LocalCachedRecord[]>(() =>
     loadOfflineCacheFromSqlite()
   );
+  const [marketplaceDrafts, setMarketplaceDrafts] = useState<
+    MarketplaceDraftRecord[]
+  >(() => loadMarketplaceDraftsFromSqlite());
   const [syncMode, setSyncMode] = useState<'auto' | 'manual'>('auto');
   const [lastSyncMessage, setLastSyncMessage] = useState<string | null>(null);
   const [careSetup, setCareSetup] =
@@ -358,8 +764,6 @@ function LiveClerkConvexStateProvider({
   const [pushNotificationsEnabled, setPushNotificationsEnabled] =
     useState<boolean>(true);
 
-  const isSignedIn = Boolean(clerkSignedIn);
-
   const userProfile: GrowerUserProfile = useMemo(() => {
     if (!user) {
       return {
@@ -369,17 +773,33 @@ function LiveClerkConvexStateProvider({
         pushNotificationsEnabled,
       };
     }
-    const email =
-      user.primaryEmailAddress?.emailAddress || 'grower@walnutiq.app';
-    const name = user.fullName || user.firstName || email.split('@')[0];
+    const clerkEmail = user.primaryEmailAddress?.emailAddress ?? '';
+    const safeEmail =
+      liveUserRoleInfo?.email ||
+      (clerkEmail.endsWith('@phone.walnutiq.app') ? '' : clerkEmail);
+    const name =
+      liveUserRoleInfo?.displayName ||
+      user.fullName ||
+      user.firstName ||
+      'WalnutIQ User';
     const hasGoogle = user.externalAccounts?.some(
       (acc) => acc.provider === 'google'
     );
     return {
       clerkId: user.id,
       displayName: name,
-      email,
-      authProvider: hasGoogle ? 'google' : 'email',
+      email: safeEmail,
+      phone: liveUserRoleInfo?.phone ?? '',
+      whatsapp: liveUserRoleInfo?.whatsapp ?? undefined,
+      authProvider: hasGoogle ? 'google' : user.username?.startsWith('phone_') ? 'phone' : 'email',
+      accountType: currentAccountType,
+      enableOrchardTools: liveUserRoleInfo?.enableOrchardTools ?? false,
+      isMarketplaceOnboardingComplete:
+        liveUserRoleInfo?.marketplaceOnboardingComplete ?? false,
+      isWholesalerProfileComplete:
+        liveUserRoleInfo?.isWholesalerProfileComplete ?? false,
+      trustedSellerCount: liveUserRoleInfo?.trustedSellerCount ?? 0,
+      trustedBuyerCount: liveUserRoleInfo?.trustedBuyerCount ?? 0,
       region: careSetup.locationZone,
       orchardName: `${name}'s Walnut Orchard`,
       experienceLevel,
@@ -388,6 +808,8 @@ function LiveClerkConvexStateProvider({
     };
   }, [
     user,
+    liveUserRoleInfo,
+    currentAccountType,
     careSetup.locationZone,
     experienceLevel,
     notificationTopics,
@@ -404,30 +826,33 @@ function LiveClerkConvexStateProvider({
   useEffect(() => {
     if (convexAuthenticated && isSignedIn && user) {
       syncUserMutation({
-        displayName: user.fullName || user.firstName || 'Walnut Grower',
+        displayName:
+          user.fullName || user.firstName || userProfile.displayName || 'Walnut Grower',
         authProvider: userProfile.authProvider,
       }).catch((err) => {
         console.warn('Convex user sync failed:', err);
       });
     }
-  }, [convexAuthenticated, isSignedIn, user, userProfile.authProvider, syncUserMutation]);
+  }, [convexAuthenticated, isSignedIn, user]);
 
   const addOrchardTree = (name: string, variety: WalnutTree['variety']) => {
-    const newTree: WalnutTree = {
-      id: `tree-${Date.now()}`,
-      name: name.trim() || `Tree #0${trees.length + 1} • New Area`,
-      variety,
-      plantedYear: 2024,
-      canopyDensity: 'standard',
-      healthScore: 95,
-      lastCanopyCount: 0,
-      estimatedTotalNuts: 0,
-      estimatedWeightKg: 0,
-      avgNutDiameterMm: 0,
-      soilMoisturePct: 65,
-      lastScannedLabel: 'Not scanned yet',
-    };
-    setTrees((prev) => [...prev, newTree]);
+    setTrees((prev) => [
+      ...prev,
+      {
+        id: `tree-${Date.now()}`,
+        name: name.trim() || `Tree #0${prev.length + 1} • New Area`,
+        variety,
+        plantedYear: 2024,
+        canopyDensity: 'standard',
+        healthScore: 95,
+        lastCanopyCount: 0,
+        estimatedTotalNuts: 0,
+        estimatedWeightKg: 0,
+        avgNutDiameterMm: 0,
+        soilMoisturePct: 65,
+        lastScannedLabel: 'Not scanned yet',
+      },
+    ]);
   };
 
   const updateCareSetup = (patch: Partial<OrchardCareSetup>) => {
@@ -450,7 +875,7 @@ function LiveClerkConvexStateProvider({
       if (createdSessionId && setOAuthActive) {
         await setOAuthActive({ session: createdSessionId });
         setLastSyncMessage(
-          'Signed in with Clerk Google OAuth • Convex sync active.'
+          'Signed in with Google • Complete mobile number & role setup if prompted.'
         );
       } else {
         setLastSyncMessage(
@@ -464,10 +889,7 @@ function LiveClerkConvexStateProvider({
     }
   };
 
-  const signInWithEmail = async (
-    email: string,
-    password?: string
-  ) => {
+  const signInWithEmail = async (email: string, password?: string) => {
     const cleanEmail = email.trim();
     if (!cleanEmail) {
       setLastSyncMessage('Please enter your email address.');
@@ -484,23 +906,177 @@ function LiveClerkConvexStateProvider({
       });
       if (error) {
         setLastSyncMessage(
-          `Clerk Email sign-in failed: ${error.longMessage || error.message}`
+          `Sign-in failed: ${error.longMessage || error.message}`
         );
         return;
       }
       if (signIn.status === 'complete') {
         await signIn.finalize();
-        setLastSyncMessage(
-          `Signed in as ${cleanEmail} via Clerk • Convex sync active.`
-        );
+        setLastSyncMessage(`Signed in via Clerk • Convex sync active.`);
       } else {
-        setLastSyncMessage(
-          'Check your email or enter your account password to finish Clerk sign-in.'
-        );
+        setLastSyncMessage('Complete verification steps to finish signing in.');
       }
     } catch (err) {
       setLastSyncMessage(
-        `Clerk Email sign-in failed: ${err instanceof Error ? err.message : 'Invalid credentials or missing password'}`
+        `Sign-in failed: ${err instanceof Error ? err.message : 'Invalid credentials'}`
+      );
+    }
+  };
+
+  const registerWithPhone = async (params: {
+    displayName: string;
+    phone: string;
+    password: string;
+    email?: string;
+    accountType: AccountType;
+    enableOrchardTools?: boolean;
+  }): Promise<{ ok: boolean; recoveryCode?: string }> => {
+    if (!signUp) {
+      setLastSyncMessage('Clerk registration is still initializing...');
+      return { ok: false };
+    }
+    try {
+      const normalizedPhone = normalizePhoneDigits(params.phone);
+      const digitsOnly = normalizedPhone.slice(1);
+      const username = `phone_${digitsOnly}`;
+      const cleanName = params.displayName.trim();
+      if (cleanName.length < 2) {
+        throw new Error('Enter your full name or orchard/company name.');
+      }
+      if (params.password.length < 8) {
+        throw new Error('Password must be at least 8 characters.');
+      }
+
+      const { error } = await signUp.password({
+        username,
+        password: params.password,
+        firstName: cleanName,
+      });
+      if (error) {
+        setLastSyncMessage(
+          `Registration failed: ${error.longMessage || error.message}`
+        );
+        return { ok: false };
+      }
+
+      if (signUp.status !== 'complete') {
+        setLastSyncMessage(
+          `Registration requires additional Clerk check (${signUp.status}). Ensure Username + Password auth is enabled in Clerk.`
+        );
+        return { ok: false };
+      }
+
+      await signUp.finalize();
+      const recoveryCode = generateRecoveryCode();
+      setLastRecoveryCode(recoveryCode);
+
+      // Brief tick for Convex auth context, then persist role + phone
+      setTimeout(() => {
+        void completeOnboardingMutation({
+          displayName: cleanName,
+          phone: normalizedPhone,
+          email: params.email?.trim() || undefined,
+          accountType: params.accountType,
+          enableOrchardTools: params.enableOrchardTools ?? false,
+          recoveryCode,
+        }).catch((err) => {
+          console.warn('Deferred onboarding sync error:', err);
+        });
+      }, 600);
+
+      setLastSyncMessage(
+        `Account created for ${normalizedPhone} as ${params.accountType.toUpperCase()}. Save your recovery code!`
+      );
+      return { ok: true, recoveryCode };
+    } catch (err) {
+      setLastSyncMessage(
+        err instanceof Error ? err.message : 'Phone registration failed'
+      );
+      return { ok: false };
+    }
+  };
+
+  const signInWithPhone = async (
+    phone: string,
+    password: string
+  ): Promise<boolean> => {
+    if (!signIn) {
+      setLastSyncMessage('Clerk authentication is still loading...');
+      return false;
+    }
+    try {
+      const normalizedPhone = normalizePhoneDigits(phone);
+      const username = `phone_${normalizedPhone.slice(1)}`;
+      const { error } = await signIn.password({
+        identifier: username,
+        password,
+      });
+      if (error) {
+        setLastSyncMessage(
+          `Phone sign-in failed: ${error.longMessage || error.message}`
+        );
+        return false;
+      }
+      if (signIn.status === 'complete') {
+        await signIn.finalize();
+        setLastSyncMessage(`Signed in with ${normalizedPhone} • Cloud active.`);
+        return true;
+      }
+      setLastSyncMessage(`Sign-in status: ${signIn.status}`);
+      return false;
+    } catch (err) {
+      setLastSyncMessage(
+        err instanceof Error ? err.message : 'Phone sign-in failed'
+      );
+      return false;
+    }
+  };
+
+  const completeMarketplaceOnboarding = async (params: {
+    displayName: string;
+    phone: string;
+    whatsapp?: string;
+    email?: string;
+    accountType: AccountType;
+    enableOrchardTools?: boolean;
+  }): Promise<boolean> => {
+    try {
+      const recoveryCode = generateRecoveryCode();
+      await completeOnboardingMutation({
+        displayName: params.displayName.trim(),
+        phone: normalizePhoneDigits(params.phone),
+        whatsapp: params.whatsapp?.trim()
+          ? normalizePhoneDigits(params.whatsapp)
+          : undefined,
+        email: params.email?.trim() || undefined,
+        accountType: params.accountType,
+        enableOrchardTools: params.enableOrchardTools ?? false,
+        recoveryCode,
+      });
+      setLastRecoveryCode(recoveryCode);
+      setLastSyncMessage(
+        `Saved Marketplace profile (${params.accountType.toUpperCase()} • ${normalizePhoneDigits(params.phone)}).`
+      );
+      return true;
+    } catch (err) {
+      setLastSyncMessage(
+        err instanceof Error ? err.message : 'Could not save onboarding details'
+      );
+      return false;
+    }
+  };
+
+  const setEnableOrchardTools = async (enabled: boolean) => {
+    try {
+      await updateDualRoleMutation({ enableOrchardTools: enabled });
+      setLastSyncMessage(
+        enabled
+          ? 'Orchard Grower Mode enabled alongside your Wholesaler account.'
+          : 'Switched back to clean Wholesaler Portal mode.'
+      );
+    } catch (err) {
+      setLastSyncMessage(
+        err instanceof Error ? err.message : 'Failed to toggle Orchard Mode'
       );
     }
   };
@@ -509,7 +1085,7 @@ function LiveClerkConvexStateProvider({
     try {
       await signOut();
       setLastSyncMessage(
-        'Signed out to Offline Orchard Mode. Local SQLite records remain safe on your phone.'
+        'Signed out to Offline Mode. Local SQLite records remain safe on your phone.'
       );
     } catch (err) {
       setLastSyncMessage(
@@ -521,21 +1097,43 @@ function LiveClerkConvexStateProvider({
   const deleteAccountAndData = async (): Promise<boolean> => {
     try {
       if (user) {
+        // Attempt atomic server-side Clerk + Convex deletion first
+        try {
+          const actionRes = (await deleteClerkAndConvexAction({})) as {
+            clerkDeletedServerSide: boolean;
+            deletedCount: number;
+          };
+          if (actionRes?.clerkDeletedServerSide) {
+            clearAllSqliteCache();
+            setLocalCache([]);
+            setMarketplaceDrafts([]);
+            await signOut();
+            setLastSyncMessage(
+              'Account, Clerk login, Convex records, and local SQLite cache permanently deleted.'
+            );
+            return true;
+          }
+        } catch {
+          // Fallback to client-initiated deletion sequence below
+        }
+
+        // Order: delete Convex data, clear SQLite, then remove Clerk user (handling reverification cleanly)
         await deleteAccountMutation({});
         clearAllSqliteCache();
         setLocalCache([]);
+        setMarketplaceDrafts([]);
         try {
           await user.delete();
         } catch (clerkErr) {
           setLastSyncMessage(
-            `Orchard data deleted, but Clerk requires recent sign-in to delete your login (${clerkErr instanceof Error ? clerkErr.message : 're-authenticate and retry'}).`
+            `Cloud & local data erased, but Clerk requires recent sign-in to close your login (${clerkErr instanceof Error ? clerkErr.message : 're-sign in and retry'}).`
           );
           return false;
         }
       }
       await signOut();
       setLastSyncMessage(
-        'Your WalnutIQ account, Convex orchard data, and local SQLite cache have been permanently deleted.'
+        'Your WalnutIQ account, Convex data, and local SQLite cache have been permanently deleted.'
       );
       return true;
     } catch (err) {
@@ -573,7 +1171,7 @@ function LiveClerkConvexStateProvider({
       setLocalCache(loadOfflineCacheFromSqlite());
 
       setLastSyncMessage(
-        `Synced ${acks.length} SQLite record(s) to Convex (${userProfile.email}). 14-day local retention timer started.`
+        `Synced ${acks.length} SQLite record(s) to Convex. 14-day local retention timer started.`
       );
       return { syncedCount: acks.length };
     } catch (err) {
@@ -588,7 +1186,7 @@ function LiveClerkConvexStateProvider({
     const result = purgeExpiredSyncedInSqlite(Date.now());
     setLocalCache(loadOfflineCacheFromSqlite());
     setLastSyncMessage(
-      `14-Day SQLite Auto-Purge complete: Removed ${result.purgedCount} synced record(s) older than ${LOCAL_RETENTION_DAYS} days (${result.freedMb} MB freed). Unsynced field data kept safe.`
+      `14-Day SQLite Auto-Purge complete: Removed ${result.purgedCount} synced record(s) older than ${LOCAL_RETENTION_DAYS} days (${result.freedMb} MB freed).`
     );
     return result;
   };
@@ -610,9 +1208,7 @@ function LiveClerkConvexStateProvider({
     insertOfflineRecordToSqlite(newRecord);
     setLocalCache((prev) => [newRecord, ...prev]);
     setLastSyncMessage(
-      isSignedIn && syncMode === 'auto'
-        ? `Saved "${title}" to local SQLite • Queued for Convex sync.`
-        : `Saved "${title}" to local SQLite queue (Offline Safe • Pending Convex upload).`
+      `Saved "${title}" to local SQLite queue (Offline Safe • Pending Convex upload).`
     );
   };
 
@@ -666,10 +1262,6 @@ function LiveClerkConvexStateProvider({
       } catch (err) {
         console.warn('Failed to sync grower preferences:', err);
       }
-    } else {
-      setLastSyncMessage(
-        `Saved ${nextLevel.toUpperCase()} care preferences locally (will sync when signed in).`
-      );
     }
   };
 
@@ -824,11 +1416,174 @@ function LiveClerkConvexStateProvider({
     }
   };
 
+  // Two-phase Marketplace photo + listing upload helper
+  const publishOrUpdateCropListing = async (
+    input: PublishCropListingInput
+  ): Promise<string | null> => {
+    const uploadedSlots: Array<{ slotKey: PhotoSlotKey; storageId: string }> =
+      [];
+
+    for (const item of input.photoUris.slice(0, 5)) {
+      if (item.storageId) {
+        uploadedSlots.push({
+          slotKey: item.slotKey,
+          storageId: item.storageId,
+        });
+        continue;
+      }
+      if (!item.localUri) continue;
+      const uploadUrl = await generateListingPhotoUrlMutation({});
+      const fileResp = await fetch(item.localUri);
+      const blob = await fileResp.blob();
+      const postResp = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': blob.type || 'image/jpeg' },
+        body: blob,
+      });
+      const json = await postResp.json();
+      if (json?.storageId) {
+        uploadedSlots.push({
+          slotKey: item.slotKey,
+          storageId: json.storageId,
+        });
+      }
+    }
+
+    const res = (await createOrUpdateListingMutation({
+      listingId: input.listingId as any,
+      localDraftId: input.localDraftId,
+      orchardFieldLocalId: input.orchardFieldLocalId,
+      title: input.title,
+      description: input.description,
+      variety: input.variety,
+      lotStage: input.lotStage,
+      form: input.form,
+      availableKg: input.availableKg,
+      minOrderKg: input.minOrderKg,
+      avgDiameterMm: input.avgDiameterMm,
+      kernelGrade: input.kernelGrade,
+      moisturePct: input.moisturePct,
+      packagingType: input.packagingType,
+      dryingMethod: input.dryingMethod,
+      loadingLogistics: input.loadingLogistics,
+      pricingMode: input.pricingMode,
+      pricePerKg: input.pricePerKg,
+      currency: input.currency,
+      region: input.region,
+      rawLat: input.rawLat,
+      rawLng: input.rawLng,
+      contactPhone: input.contactPhone,
+      contactWhatsapp: input.contactWhatsapp,
+      contactEmail: input.contactEmail,
+      showPhone: input.showPhone,
+      showWhatsapp: input.showWhatsapp,
+      showEmail: input.showEmail,
+      allowInAppChat: input.allowInAppChat,
+      photoSlots: uploadedSlots,
+    })) as { listingId: string };
+
+    setLastSyncMessage(`Published "${input.title}" to Walnut Marketplace.`);
+    return res?.listingId ?? null;
+  };
+
+  const saveOfflineCropDraft = (
+    input: PublishCropListingInput,
+    draftState: 'EDITING' | 'QUEUED_PUBLISH'
+  ): string => {
+    const localDraftId = input.localDraftId || `draft-${Date.now()}`;
+    const draft: MarketplaceDraftRecord = {
+      localDraftId,
+      title: input.title || `${input.variety} Draft`,
+      variety: input.variety,
+      availableKg: input.availableKg,
+      payloadJson: JSON.stringify({ ...input, localDraftId }),
+      photoSlotsLocalJson: JSON.stringify(input.photoUris),
+      draftState,
+      updatedAtMs: Date.now(),
+    };
+    upsertMarketplaceDraftInSqlite(draft);
+    setMarketplaceDrafts(loadMarketplaceDraftsFromSqlite());
+    setLastSyncMessage(
+      draftState === 'QUEUED_PUBLISH'
+        ? `Saved "${draft.title}" to offline publish queue.`
+        : `Saved "${draft.title}" as local draft in SQLite.`
+    );
+    return localDraftId;
+  };
+
+  const deleteOfflineCropDraft = (localDraftId: string) => {
+    deleteMarketplaceDraftInSqlite(localDraftId);
+    setMarketplaceDrafts(loadMarketplaceDraftsFromSqlite());
+  };
+
+  const syncPendingMarketplaceDrafts = async (): Promise<{
+    syncedCount: number;
+  }> => {
+    const queued = marketplaceDrafts.filter(
+      (d) => d.draftState === 'QUEUED_PUBLISH'
+    );
+    if (queued.length === 0 || !canQueryCloud) {
+      return { syncedCount: 0 };
+    }
+    let syncedCount = 0;
+    for (const draft of queued) {
+      try {
+        const parsed = JSON.parse(draft.payloadJson) as PublishCropListingInput;
+        await publishOrUpdateCropListing({
+          ...parsed,
+          localDraftId: draft.localDraftId,
+        });
+        markMarketplaceDraftSyncedInSqlite(draft.localDraftId);
+        syncedCount++;
+      } catch (err) {
+        console.warn('Draft publish retry deferred:', err);
+      }
+    }
+    setMarketplaceDrafts(loadMarketplaceDraftsFromSqlite());
+    return { syncedCount };
+  };
+
+  useEffect(() => {
+    const hasQueued = marketplaceDrafts.some(
+      (d) => d.draftState === 'QUEUED_PUBLISH'
+    );
+    if (
+      canQueryCloud &&
+      userProfile.isMarketplaceOnboardingComplete &&
+      hasQueued
+    ) {
+      void syncPendingMarketplaceDrafts();
+    }
+  }, [canQueryCloud, userProfile.isMarketplaceOnboardingComplete]);
+
+  const normalizedMyWholesalerProfile: WholesalerProfileInput | null =
+    liveMyWholesalerProfile
+      ? {
+          companyName: liveMyWholesalerProfile.companyName,
+          contactName: liveMyWholesalerProfile.contactName,
+          region: liveMyWholesalerProfile.region,
+          bio: liveMyWholesalerProfile.bio,
+          howWeWork: liveMyWholesalerProfile.howWeWork,
+          preferredVarieties: liveMyWholesalerProfile.preferredVarieties,
+          minPurchaseKg: liveMyWholesalerProfile.minPurchaseKg,
+          maxPurchaseKg: liveMyWholesalerProfile.maxPurchaseKg,
+          phone: liveMyWholesalerProfile.contact.phone,
+          whatsapp: liveMyWholesalerProfile.contact.whatsapp,
+          email: liveMyWholesalerProfile.contact.email,
+          showPhone: liveMyWholesalerProfile.contact.showPhone,
+          showWhatsapp: liveMyWholesalerProfile.contact.showWhatsapp,
+          showEmail: liveMyWholesalerProfile.contact.showEmail,
+          allowInAppChat: liveMyWholesalerProfile.contact.allowInAppChat,
+        }
+      : null;
+
   const contextValue: WalnutCloudContextValue = {
     isCloudConfigured: true,
     isSignedIn,
     isOnlineSyncReady: isSignedIn,
     userProfile,
+    lastRecoveryCode,
+    clearLastRecoveryCode: () => setLastRecoveryCode(null),
     trees,
     addOrchardTree,
     fields,
@@ -841,8 +1596,9 @@ function LiveClerkConvexStateProvider({
     resetCareSetupToDefaults,
     updateGrowerPreferences,
     publishedCareBanner: liveCareDefaults?.dailyGuidanceNote?.trim() || null,
-    careFeed: liveCareFeed ?? [],
+    careFeed: canQueryCloud ? liveCareFeed ?? [] : [],
     localCache,
+    marketplaceDrafts,
     syncMode,
     setSyncMode,
     pendingUploadCount,
@@ -850,11 +1606,116 @@ function LiveClerkConvexStateProvider({
     lastSyncMessage,
     signInWithGoogle,
     signInWithEmail,
+    registerWithPhone,
+    signInWithPhone,
+    completeMarketplaceOnboarding,
+    setEnableOrchardTools,
     signOutToOfflineMode,
     deleteAccountAndData,
     syncPendingToConvex,
     runFourteenDayAutoPurge,
     addOfflineFieldRecord,
+    marketplaceListings: canQueryCloud
+      ? liveListings ?? []
+      : DEMO_MARKETPLACE_LISTINGS,
+    myListings: canQueryCloud ? liveMyListings ?? [] : [],
+    wholesalers: canQueryCloud ? liveWholesalers ?? [] : DEMO_WHOLESALERS,
+    myWholesalerProfile: normalizedMyWholesalerProfile,
+    buyRequests: canQueryCloud ? liveBuyRequests ?? [] : DEMO_BUY_REQUESTS,
+    marketplaceThreads: canQueryCloud ? liveThreads ?? [] : [],
+    activeThreadId,
+    setActiveThreadId,
+    activeThreadMessages: canQueryCloud ? liveThreadMessages ?? [] : [],
+    roleGroupMessages: canQueryCloud ? liveRoleMessages ?? [] : [],
+    marketPulse: canQueryCloud ? liveMarketPulse ?? [] : DEMO_MARKET_PULSE,
+    inspectingUserId,
+    setInspectingUserId,
+    inspectingTrustFeedback: canQueryCloud ? liveTrustFeedback ?? [] : [],
+    publishOrUpdateCropListing,
+    saveOfflineCropDraft,
+    deleteOfflineCropDraft,
+    syncPendingMarketplaceDrafts,
+    updateListingStatus: async (listingId, status) => {
+      await markListingStatusMutation({ listingId: listingId as any, status });
+    },
+    saveWholesalerBuyerProfile: async (input) => {
+      const res = (await upsertWholesalerProfileMutation(input)) as {
+        isProfileComplete: boolean;
+      };
+      setLastSyncMessage('Wholesaler Buyer Profile saved.');
+      return Boolean(res?.isProfileComplete);
+    },
+    saveWholesalerBuyRequest: async (input) => {
+      await upsertBuyRequestMutation({
+        ...input,
+        requestId: input.requestId as any,
+      });
+      setLastSyncMessage(`Buy request "${input.title}" updated.`);
+    },
+    openOrCreateB2BThread: async (params) => {
+      const res = (await getOrCreateThreadMutation({
+        listingId: params.listingId as any,
+        buyRequestId: params.buyRequestId as any,
+        counterpartyUserId: params.counterpartyUserId,
+      })) as { threadId: string };
+      setActiveThreadId(res?.threadId ?? null);
+      return res?.threadId ?? null;
+    },
+    revealContactAndStartThread: async (params) => {
+      const res = (await revealContactMutation({
+        listingId: params.listingId as any,
+        counterpartyUserId: params.counterpartyUserId,
+      })) as {
+        threadId: string | null;
+        contact: {
+          phone: string | null;
+          whatsapp: string | null;
+          email: string | null;
+        } | null;
+      };
+      if (res?.threadId) setActiveThreadId(res.threadId);
+      return {
+        threadId: res?.threadId ?? null,
+        phone: res?.contact?.phone ?? null,
+        whatsapp: res?.contact?.whatsapp ?? null,
+        email: res?.contact?.email ?? null,
+      };
+    },
+    sendB2BMessage: async (threadId, body) => {
+      await sendThreadMessageMutation({ threadId: threadId as any, body });
+    },
+    sendB2BStructuredAction: async (threadId, payload) => {
+      await sendStructuredActionMutation({
+        threadId: threadId as any,
+        payload,
+      });
+    },
+    postRoleGroupMessage: async (text) => {
+      await sendRoleGroupMessageMutation({ channelId: roleChannelId, text });
+    },
+    awardCounterpartyBadge: async (params) => {
+      await awardTrustBadgeMutation({
+        ...params,
+        threadId: params.threadId as any,
+      });
+      setLastSyncMessage('Awarded Trusted Badge & factual feedback.');
+      return true;
+    },
+    submitBadgeDispute: async (feedbackId, disputeReason) => {
+      await requestDisputeMutation({
+        feedbackId: feedbackId as any,
+        disputeReason,
+      });
+      setLastSyncMessage('Dispute submitted to Admin for review.');
+    },
+    submitContentReport: async (params) => {
+      await reportContentMutation(params);
+      setLastSyncMessage('Report submitted for moderation review.');
+    },
+    blockUserAccount: async (targetUserId) => {
+      await blockUserMutation({ targetUserId });
+      setLastSyncMessage('User blocked and hidden from your Marketplace feed.');
+    },
   };
 
   return (
@@ -865,7 +1726,7 @@ function LiveClerkConvexStateProvider({
 }
 
 /**
- * Fallback Provider when `.env.local` keys are absent (still uses real SQLite persistence)
+ * Fallback Provider when `.env.local` keys are absent (local SQLite + Demo Marketplace)
  */
 function FallbackLocalStateProvider({
   children,
@@ -875,15 +1736,36 @@ function FallbackLocalStateProvider({
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [userProfile, setUserProfile] =
     useState<GrowerUserProfile>(DEFAULT_PROFILE);
+  const [lastRecoveryCode, setLastRecoveryCode] = useState<string | null>(null);
   const [trees, setTrees] = useState<WalnutTree[]>(INITIAL_TREES);
   const [fields, setFields] = useState<OrchardFieldBlock[]>(INITIAL_FIELDS);
   const [localCache, setLocalCache] = useState<LocalCachedRecord[]>(() =>
     loadOfflineCacheFromSqlite()
   );
+  const [marketplaceDrafts, setMarketplaceDrafts] = useState<
+    MarketplaceDraftRecord[]
+  >(() => loadMarketplaceDraftsFromSqlite());
   const [syncMode, setSyncMode] = useState<'auto' | 'manual'>('auto');
   const [lastSyncMessage, setLastSyncMessage] = useState<string | null>(null);
   const [careSetup, setCareSetup] =
     useState<OrchardCareSetup>(DEFAULT_CARE_SETUP);
+
+  const [listings, setListings] = useState<MarketplaceListingItem[]>(
+    DEMO_MARKETPLACE_LISTINGS
+  );
+  const [wholesalers, setWholesalers] =
+    useState<WholesalerDirectoryItem[]>(DEMO_WHOLESALERS);
+  const [myWholesalerProfile, setMyWholesalerProfile] =
+    useState<WholesalerProfileInput | null>(null);
+  const [buyRequests, setBuyRequests] =
+    useState<WholesalerBuyRequestItem[]>(DEMO_BUY_REQUESTS);
+  const [threads, setThreads] = useState<MarketplaceThreadItem[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [messagesByThread, setMessagesByThread] = useState<
+    Record<string, MarketplaceMessageItem[]>
+  >({});
+  const [roleMessages, setRoleMessages] = useState<RoleGroupMessageItem[]>([]);
+  const [inspectingUserId, setInspectingUserId] = useState<string | null>(null);
 
   const addOrchardTree = (name: string, variety: WalnutTree['variety']) => {
     setTrees((prev) => [
@@ -905,26 +1787,13 @@ function FallbackLocalStateProvider({
     ]);
   };
 
-  const updateGrowerPreferences = async (patch: {
-    experienceLevel?: GrowerExperienceLevel;
-    notificationTopics?: string[];
-    pushNotificationsEnabled?: boolean;
-  }) => {
-    setUserProfile((prev) => ({
-      ...prev,
-      experienceLevel: patch.experienceLevel ?? prev.experienceLevel,
-      notificationTopics: patch.notificationTopics ?? prev.notificationTopics,
-      pushNotificationsEnabled:
-        patch.pushNotificationsEnabled ?? prev.pushNotificationsEnabled,
-    }));
-    setLastSyncMessage('Updated local grower experience & notification settings.');
-  };
-
   const contextValue: WalnutCloudContextValue = {
     isCloudConfigured: false,
     isSignedIn,
     isOnlineSyncReady: isSignedIn,
     userProfile,
+    lastRecoveryCode,
+    clearLastRecoveryCode: () => setLastRecoveryCode(null),
     trees,
     addOrchardTree,
     fields,
@@ -1002,10 +1871,20 @@ function FallbackLocalStateProvider({
     updateCareSetup: (patch) =>
       setCareSetup((prev) => ({ ...prev, ...patch, isCustomizedByUser: true })),
     resetCareSetupToDefaults: () => setCareSetup(DEFAULT_CARE_SETUP),
-    updateGrowerPreferences,
+    updateGrowerPreferences: async (patch) => {
+      setUserProfile((prev) => ({
+        ...prev,
+        experienceLevel: patch.experienceLevel ?? prev.experienceLevel,
+        notificationTopics: patch.notificationTopics ?? prev.notificationTopics,
+        pushNotificationsEnabled:
+          patch.pushNotificationsEnabled ?? prev.pushNotificationsEnabled,
+      }));
+      setLastSyncMessage('Updated local grower experience preferences.');
+    },
     publishedCareBanner: null,
     careFeed: [],
     localCache,
+    marketplaceDrafts,
     syncMode,
     setSyncMode,
     pendingUploadCount: localCache.filter(
@@ -1015,26 +1894,75 @@ function FallbackLocalStateProvider({
     lastSyncMessage,
     signInWithGoogle: async () => {
       setIsSignedIn(true);
-      setLastSyncMessage('Signed in (Local Demo Mode — add Clerk keys for live OAuth).');
+      setLastSyncMessage('Signed in (Local Demo Mode).');
     },
     signInWithEmail: async (email) => {
-      const cleanEmail = email.trim() || 'grower@walnutiq.app';
+      const cleanEmail = email.trim();
       setUserProfile((p) => ({
         ...p,
         email: cleanEmail,
-        displayName: cleanEmail.split('@')[0],
+        displayName: cleanEmail ? cleanEmail.split('@')[0] : p.displayName,
         authProvider: 'email',
       }));
       setIsSignedIn(true);
-      setLastSyncMessage(`Signed in as ${cleanEmail} (Local Demo Mode).`);
+      setLastSyncMessage('Signed in (Local Demo Mode).');
+    },
+    registerWithPhone: async (params) => {
+      const code = generateRecoveryCode();
+      setLastRecoveryCode(code);
+      setUserProfile((p) => ({
+        ...p,
+        displayName: params.displayName.trim(),
+        phone: normalizePhoneDigits(params.phone),
+        email: params.email?.trim() || '',
+        authProvider: 'phone',
+        accountType: params.accountType,
+        enableOrchardTools: params.enableOrchardTools ?? false,
+        isMarketplaceOnboardingComplete: true,
+      }));
+      setIsSignedIn(true);
+      setLastSyncMessage(
+        `Registered ${params.phone} as ${params.accountType.toUpperCase()} (Local Demo).`
+      );
+      return { ok: true, recoveryCode: code };
+    },
+    signInWithPhone: async (phone) => {
+      setUserProfile((p) => ({
+        ...p,
+        phone: normalizePhoneDigits(phone),
+        authProvider: 'phone',
+      }));
+      setIsSignedIn(true);
+      return true;
+    },
+    completeMarketplaceOnboarding: async (params) => {
+      const code = generateRecoveryCode();
+      setLastRecoveryCode(code);
+      setUserProfile((p) => ({
+        ...p,
+        displayName: params.displayName.trim(),
+        phone: normalizePhoneDigits(params.phone),
+        whatsapp: params.whatsapp?.trim()
+          ? normalizePhoneDigits(params.whatsapp)
+          : undefined,
+        email: params.email?.trim() || '',
+        accountType: params.accountType,
+        enableOrchardTools: params.enableOrchardTools ?? false,
+        isMarketplaceOnboardingComplete: true,
+      }));
+      return true;
+    },
+    setEnableOrchardTools: async (enabled) => {
+      setUserProfile((p) => ({ ...p, enableOrchardTools: enabled }));
     },
     signOutToOfflineMode: async () => {
       setIsSignedIn(false);
-      setLastSyncMessage('Switched to Offline Orchard Mode.');
+      setLastSyncMessage('Switched to Offline Mode.');
     },
     deleteAccountAndData: async () => {
       clearAllSqliteCache();
       setLocalCache([]);
+      setMarketplaceDrafts([]);
       setIsSignedIn(false);
       setLastSyncMessage('Cleared local SQLite cache and signed out.');
       return true;
@@ -1057,6 +1985,250 @@ function FallbackLocalStateProvider({
       insertOfflineRecordToSqlite(rec);
       setLocalCache((prev) => [rec, ...prev]);
     },
+    marketplaceListings: listings,
+    myListings: listings.filter((l) => l.userId === userProfile.clerkId),
+    wholesalers,
+    myWholesalerProfile,
+    buyRequests,
+    marketplaceThreads: threads,
+    activeThreadId,
+    setActiveThreadId,
+    activeThreadMessages: activeThreadId
+      ? messagesByThread[activeThreadId] ?? []
+      : [],
+    roleGroupMessages: roleMessages,
+    marketPulse: DEMO_MARKET_PULSE,
+    inspectingUserId,
+    setInspectingUserId,
+    inspectingTrustFeedback: [],
+    publishOrUpdateCropListing: async (input) => {
+      const id = input.listingId ?? `listing-${Date.now()}`;
+      const item: MarketplaceListingItem = {
+        _id: id,
+        userId: userProfile.clerkId,
+        producerName: userProfile.displayName,
+        trustedSellerCount: userProfile.trustedSellerCount,
+        verifiedOrchardSummary: input.orchardFieldLocalId
+          ? { treeCount: 120, plantedYear: 2019, sampledDiameterMm: input.avgDiameterMm }
+          : null,
+        title: input.title,
+        description: input.description,
+        variety: input.variety,
+        lotStage: input.lotStage,
+        form: input.form,
+        availableKg: input.availableKg,
+        minOrderKg: input.minOrderKg ?? null,
+        avgDiameterMm: input.avgDiameterMm ?? null,
+        kernelGrade: input.kernelGrade,
+        moisturePct: input.moisturePct ?? null,
+        packagingType: input.packagingType,
+        dryingMethod: input.dryingMethod,
+        loadingLogistics: input.loadingLogistics,
+        pricingMode: input.pricingMode,
+        pricePerKg: input.pricePerKg ?? null,
+        currency: input.currency,
+        region: input.region,
+        approxLat: null,
+        approxLng: null,
+        distanceKm: null,
+        photos: input.photoUris.map((p) => ({
+          slotKey: p.slotKey,
+          storageId: p.storageId ?? 'local',
+          url: p.localUri,
+        })),
+        contact: {
+          phone: input.showPhone ? input.contactPhone || userProfile.phone : null,
+          whatsapp: input.showWhatsapp ? input.contactWhatsapp || null : null,
+          email: input.showEmail ? input.contactEmail || null : null,
+          showPhone: input.showPhone,
+          showWhatsapp: input.showWhatsapp,
+          showEmail: input.showEmail,
+          allowInAppChat: input.allowInAppChat,
+          contactLockedReason: null,
+        },
+        status: 'active',
+        updatedAtMs: Date.now(),
+      };
+      setListings((prev) => [item, ...prev.filter((l) => l._id !== id)]);
+      return id;
+    },
+    saveOfflineCropDraft: (input, draftState) => {
+      const localDraftId = input.localDraftId || `draft-${Date.now()}`;
+      upsertMarketplaceDraftInSqlite({
+        localDraftId,
+        title: input.title || `${input.variety} Draft`,
+        variety: input.variety,
+        availableKg: input.availableKg,
+        payloadJson: JSON.stringify({ ...input, localDraftId }),
+        photoSlotsLocalJson: JSON.stringify(input.photoUris),
+        draftState,
+        updatedAtMs: Date.now(),
+      });
+      setMarketplaceDrafts(loadMarketplaceDraftsFromSqlite());
+      return localDraftId;
+    },
+    deleteOfflineCropDraft: (localDraftId) => {
+      deleteMarketplaceDraftInSqlite(localDraftId);
+      setMarketplaceDrafts(loadMarketplaceDraftsFromSqlite());
+    },
+    syncPendingMarketplaceDrafts: async () => ({ syncedCount: 0 }),
+    updateListingStatus: async (listingId, status) => {
+      setListings((prev) =>
+        prev.map((l) => (l._id === listingId ? { ...l, status } : l))
+      );
+    },
+    saveWholesalerBuyerProfile: async (input) => {
+      setMyWholesalerProfile(input);
+      const isComplete = Boolean(
+        input.companyName &&
+          input.contactName &&
+          (input.phone || userProfile.phone) &&
+          input.region &&
+          input.bio &&
+          input.howWeWork
+      );
+      setUserProfile((p) => ({ ...p, isWholesalerProfileComplete: isComplete }));
+      setWholesalers((prev) => [
+        {
+          _id: `buyer-${userProfile.clerkId}`,
+          userId: userProfile.clerkId,
+          companyName: input.companyName,
+          contactName: input.contactName,
+          region: input.region,
+          bio: input.bio,
+          howWeWork: input.howWeWork,
+          preferredVarieties: input.preferredVarieties,
+          minPurchaseKg: input.minPurchaseKg ?? null,
+          maxPurchaseKg: input.maxPurchaseKg ?? null,
+          trustedBuyerCount: userProfile.trustedBuyerCount,
+          contact: {
+            phone: input.showPhone ? input.phone || userProfile.phone : null,
+            whatsapp: input.showWhatsapp ? input.whatsapp || null : null,
+            email: input.showEmail ? input.email || null : null,
+            showPhone: input.showPhone,
+            showWhatsapp: input.showWhatsapp,
+            showEmail: input.showEmail,
+            allowInAppChat: input.allowInAppChat,
+            contactLockedReason: null,
+          },
+          updatedAtMs: Date.now(),
+        },
+        ...prev.filter((w) => w.userId !== userProfile.clerkId),
+      ]);
+      return isComplete;
+    },
+    saveWholesalerBuyRequest: async (input) => {
+      const id = input.requestId ?? `req-${Date.now()}`;
+      setBuyRequests((prev) => [
+        {
+          _id: id,
+          userId: userProfile.clerkId,
+          companyName:
+            myWholesalerProfile?.companyName || userProfile.displayName,
+          ...input,
+          updatedAtMs: Date.now(),
+        },
+        ...prev.filter((r) => r._id !== id),
+      ]);
+    },
+    openOrCreateB2BThread: async (params) => {
+      const tid = `thread-${Date.now()}`;
+      setThreads((prev) => [
+        {
+          _id: tid,
+          listingId: params.listingId,
+          buyRequestId: params.buyRequestId,
+          producerUserId:
+            userProfile.accountType === 'producer'
+              ? userProfile.clerkId
+              : params.counterpartyUserId,
+          wholesalerUserId:
+            userProfile.accountType === 'wholesaler'
+              ? userProfile.clerkId
+              : params.counterpartyUserId,
+          subjectTitle: 'Walnut Trade Inquiry (Demo)',
+          hasProducerReplied: false,
+          hasWholesalerReplied: false,
+          lastMessageAtMs: Date.now(),
+          lastMessagePreview: 'Thread opened',
+        },
+        ...prev,
+      ]);
+      setActiveThreadId(tid);
+      return tid;
+    },
+    revealContactAndStartThread: async (params) => ({
+      threadId: params.listingId ?? null,
+      phone: '+15550100000',
+      whatsapp: '+15550100000',
+      email: null,
+    }),
+    sendB2BMessage: async (threadId, body) => {
+      setMessagesByThread((prev) => ({
+        ...prev,
+        [threadId]: [
+          ...(prev[threadId] ?? []),
+          {
+            _id: `msg-${Date.now()}`,
+            threadId,
+            senderUserId: userProfile.clerkId,
+            senderRole: userProfile.accountType,
+            messageType: 'text',
+            body,
+            createdAtMs: Date.now(),
+          },
+        ],
+      }));
+    },
+    sendB2BStructuredAction: async (threadId, payload) => {
+      const body =
+        payload.kind === 'sample_request'
+          ? `Requested ${payload.sampleWeightKg} kg crack sample`
+          : payload.kind === 'price_offer'
+          ? `Trade Offer: ${payload.quantityKg} kg @ ${payload.pricePerKg} ${payload.currency}/kg`
+          : `Exact Orchard GPS: ${payload.fieldLabel}`;
+      setMessagesByThread((prev) => ({
+        ...prev,
+        [threadId]: [
+          ...(prev[threadId] ?? []),
+          {
+            _id: `msg-${Date.now()}`,
+            threadId,
+            senderUserId: userProfile.clerkId,
+            senderRole: userProfile.accountType,
+            messageType: payload.kind,
+            body,
+            structuredPayload: payload,
+            createdAtMs: Date.now(),
+          },
+        ],
+      }));
+    },
+    postRoleGroupMessage: async (text) => {
+      setRoleMessages((prev) => [
+        ...prev,
+        {
+          _id: `rmsg-${Date.now()}`,
+          channelId:
+            userProfile.accountType === 'wholesaler'
+              ? 'buyers_only'
+              : 'sellers_only',
+          senderClerkId: userProfile.clerkId,
+          senderName: userProfile.displayName,
+          senderRole:
+            userProfile.accountType === 'wholesaler'
+              ? 'Wholesaler Buyer'
+              : 'Walnut Producer',
+          senderRegion: userProfile.region,
+          text,
+          createdAtMs: Date.now(),
+        },
+      ]);
+    },
+    awardCounterpartyBadge: async () => true,
+    submitBadgeDispute: async () => {},
+    submitContentReport: async () => {},
+    blockUserAccount: async () => {},
   };
 
   return (

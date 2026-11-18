@@ -193,9 +193,12 @@ export default function LegalPages({
               <li>
                 <strong>In the Mobile App (Instant)</strong>: Open{' '}
                 <strong>WalnutIQ → Account → Delete Account & Data</strong>.
-                This immediately purges your trees, scans, care logs, sensor
-                snapshots, and local SQLite cache, and deletes your Clerk user
-                profile.
+                This immediately deletes your Clerk login, local SQLite cache,
+                orchard fields, marketplace listings, uploaded photo blobs, and
+                scrubs PII from two-party B2B threads. Policy-removed
+                marketplace trust records keep only an anonymized salted phone
+                hash for 90 days (all comments & IDs scrubbed) to prevent abuse
+                evasion.
               </li>
               <li>
                 <strong>By Email Request</strong>: Send a request from your

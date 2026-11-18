@@ -1,24 +1,6 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
-
-const ADMIN_EMAIL = 'pinarlik99@gmail.com';
-
-async function requireAdmin(ctx: { auth: any; db: any }) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
-    throw new Error('Unauthorized: Clerk authentication required');
-  }
-  const normalizedEmail = (identity.email ?? '').trim().toLowerCase();
-  const userRecord = await ctx.db
-    .query('users')
-    .withIndex('by_clerk_id', (q: any) => q.eq('clerkId', identity.subject))
-    .first();
-
-  if (normalizedEmail !== ADMIN_EMAIL && userRecord?.role !== 'admin') {
-    throw new Error('Forbidden: WalnutIQ admin privileges required');
-  }
-  return identity;
-}
+import { isAdminCaller, requireAdmin } from './lib/auth';
 
 const EXPERT_CARE_PRESETS = [
   {
@@ -196,6 +178,10 @@ export const publishCareDefaults = mutation({
 export const listCareCards = query({
   args: {},
   handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
     const cards = await ctx.db.query('careCards').collect();
     return cards.sort((a, b) => b.updatedAtMs - a.updatedAtMs);
   },
@@ -354,8 +340,7 @@ export const cancelScheduledNotification = mutation({
 export const listNotificationsForAdmin = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    if (!(await isAdminCaller(ctx))) {
       return [];
     }
     const items = await ctx.db
@@ -371,6 +356,9 @@ export const listMyCareFeed = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
     const now = Date.now();
     let userLevel: 'beginner' | 'experienced' | 'expert' = 'experienced';
     let userTopics: string[] | null = null;
