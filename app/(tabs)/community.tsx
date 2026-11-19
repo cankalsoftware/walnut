@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   View,
@@ -34,6 +34,7 @@ export default function CommunityChatScreen() {
   } = useWalnutCloud();
 
   const isWholesaler = userProfile.accountType === 'wholesaler';
+  const isPureWholesaler = isWholesaler && !userProfile.enableOrchardTools;
   const roleRoomName = isWholesaler ? 'Buyers Only Hall' : 'Sellers Only Hall';
   const [selectedChannel, setSelectedChannel] = useState(
     isWholesaler ? 'role_room' : 'yield-counts'
@@ -41,6 +42,12 @@ export default function CommunityChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [attachScanCard, setAttachScanCard] = useState(false);
+
+  useEffect(() => {
+    if (isPureWholesaler && selectedChannel !== 'role_room') {
+      setSelectedChannel('role_room');
+    }
+  }, [isPureWholesaler, selectedChannel]);
 
   if (!isSignedIn) {
     return (
@@ -56,7 +63,7 @@ export default function CommunityChatScreen() {
     (m) => m.channelId === selectedChannel
   );
 
-  const visibleChannels = isWholesaler && !userProfile.enableOrchardTools
+  const visibleChannels = isPureWholesaler
     ? [{ id: 'role_room', name: roleRoomName }]
     : [{ id: 'role_room', name: roleRoomName }, ...COMMUNITY_CHANNELS];
 
@@ -119,28 +126,43 @@ export default function CommunityChatScreen() {
         <View style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>
-              {isWholesaler ? 'Buyers Trade Community' : 'Grower & Trade Community'}
+              {isWholesaler && userProfile.enableOrchardTools
+                ? 'Buyers Hall & Grower Community'
+                : isWholesaler
+                  ? 'Buyers Trade Community'
+                  : 'Grower & Trade Community'}
             </Text>
             <Text style={styles.subtitle}>
-              {isWholesaler
-                ? 'Market Pulse benchmarks & Wholesalers-only hall'
-                : 'Market Pulse benchmarks, Sellers-only hall & grower tips'}
+              {isWholesaler && userProfile.enableOrchardTools
+                ? 'Market Pulse, Buyers-only hall & grower orchard tips'
+                : isWholesaler
+                  ? 'Market Pulse benchmarks & Wholesalers-only hall'
+                  : 'Market Pulse benchmarks, Sellers-only hall & grower tips'}
             </Text>
           </View>
-          <HelpButton
-            help={{
-              title: 'Community & Role Halls',
-              whatItDoes:
-                'Connects Producers exclusively with fellow Producers in Sellers Only Hall, and Wholesalers exclusively with fellow Wholesalers in Buyers Only Hall, alongside live Market Pulse benchmarks.',
-              howToDoIt: [
-                'Check the Regional Market Pulse strip at the top for active supply, demand, and ask price ranges.',
-                'Select your role hall to share logistics, harvest timing, or grading updates with verified peers.',
-                'Use Report on any message if someone posts abusive or misleading trade claims.',
-              ],
-              whatToExpect:
-                'Server-side RBAC prevents cross-role visibility in the Sellers Only and Buyers Only halls.',
-            }}
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <HelpButton
+              help={{
+                title: 'Community & Role Halls',
+                whatItDoes:
+                  'Connects Producers exclusively with fellow Producers in Sellers Only Hall, and Wholesalers exclusively with fellow Wholesalers in Buyers Only Hall, alongside live Market Pulse benchmarks.',
+                howToDoIt: [
+                  'Check the Regional Market Pulse strip at the top for active supply, demand, and ask price ranges.',
+                  'Select your role hall to share logistics, harvest timing, or grading updates with verified peers.',
+                  'Use Report on any message if someone posts abusive or misleading trade claims.',
+                ],
+                whatToExpect:
+                  'Server-side RBAC prevents cross-role visibility in the Sellers Only and Buyers Only halls.',
+              }}
+            />
+            <TouchableOpacity
+              style={styles.accountChip}
+              onPress={() => router.push('/auth')}
+            >
+              <Ionicons name="person-circle" size={18} color={Colors.walnutGreen[800]} />
+              <Text style={styles.accountChipText}>Account</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Pinned Regional Market Pulse Bar */}
@@ -682,6 +704,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: Colors.text.muted,
+  },
+  accountChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.walnutGreen[100],
+    borderWidth: 1,
+    borderColor: Colors.walnutGreen[300],
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  accountChipText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.walnutGreen[800],
   },
 });
 

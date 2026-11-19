@@ -481,8 +481,10 @@ export const createOrUpdateListing = mutation({
   },
   handler: async (ctx, args) => {
     const { identity, user } = await requireCompletedOnboarding(ctx);
-    if (user.accountType !== 'producer') {
-      throw new Error('Only Producer accounts can publish walnut crop listings.');
+    if (user.accountType !== 'producer' && !user.enableOrchardTools) {
+      throw new Error(
+        'Only Producer or Dual-Role Orchard accounts can publish walnut crop listings.'
+      );
     }
 
     if (!args.showPhone && !args.allowInAppChat) {
@@ -1000,25 +1002,32 @@ async function resolveThreadParties(
   let wholesalerUserId: string;
   let subjectTitle = 'Walnut Trade Inquiry';
 
-  if (caller.accountType === 'wholesaler') {
+  const listing = listingId ? await ctx.db.get(listingId) : null;
+  const buyReq = !listing && buyRequestId ? await ctx.db.get(buyRequestId) : null;
+
+  if (listing) {
+    producerUserId = listing.userId;
+    wholesalerUserId =
+      listing.userId === caller.clerkId ? counterpartyUserId : caller.clerkId;
+    if (
+      wholesalerUserId === caller.clerkId &&
+      caller.accountType === 'wholesaler'
+    ) {
+      await requireCompletedWholesalerProfile(ctx);
+    }
+    subjectTitle = `${listing.variety} • ${listing.availableKg} kg (${listing.region})`;
+  } else if (buyReq) {
+    wholesalerUserId = buyReq.userId;
+    producerUserId =
+      buyReq.userId === caller.clerkId ? counterpartyUserId : caller.clerkId;
+    subjectTitle = `Buy Request: ${buyReq.variety} • ${buyReq.targetKg} kg`;
+  } else if (caller.accountType === 'wholesaler') {
     await requireCompletedWholesalerProfile(ctx);
     wholesalerUserId = caller.clerkId;
     producerUserId = counterpartyUserId;
   } else {
     producerUserId = caller.clerkId;
     wholesalerUserId = counterpartyUserId;
-  }
-
-  if (listingId) {
-    const listing = await ctx.db.get(listingId);
-    if (listing) {
-      subjectTitle = `${listing.variety} • ${listing.availableKg} kg (${listing.region})`;
-    }
-  } else if (buyRequestId) {
-    const req = await ctx.db.get(buyRequestId);
-    if (req) {
-      subjectTitle = `Buy Request: ${req.variety} • ${req.targetKg} kg`;
-    }
   }
 
   return { producerUserId, wholesalerUserId, subjectTitle };

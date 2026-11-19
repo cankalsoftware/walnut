@@ -34,6 +34,9 @@ export default function OrchardDashboardScreen() {
   } = useWalnutCloud();
   const [tasks, setTasks] = useState(INITIAL_CARE_TASKS.slice(0, 2));
   const [activePopup, setActivePopup] = useState<'daily' | 'weekly' | null>(null);
+  const [alertsModalVisible, setAlertsModalVisible] = useState(false);
+  const [guidanceDismissed, setGuidanceDismissed] = useState(false);
+  const [sensorsExpanded, setSensorsExpanded] = useState(false);
 
   if (
     isSignedIn &&
@@ -123,16 +126,35 @@ export default function OrchardDashboardScreen() {
               help={{
                 title: 'Orchard Home & Yield Overview',
                 whatItDoes:
-                  'Shows your walnut trees, estimated nut counts, seasonal guidance, and quick actions.',
+                  'Shows your upcoming care tasks, dismissible guidance, field blocks, and collapsible sensor telemetry.',
                 howToDoIt: [
-                  'Sign in via the Account / Sign In button to unlock Care Calendar, Camera AI, Community, and Setup & Data.',
-                  'Tap Daily or Weekly guides to see tasks calibrated to your soil and location.',
-                  'Use the Camera button in the bottom bar to count canopy or ground walnuts.',
+                  'Tap the Bell icon next to Account to view Latest Orchard Alerts.',
+                  'Tap any Field Block chip to expand its details and 4-quadrant yield sampling.',
+                  'Expand Walnuts Orchard Sensors to view live readings, Shop Sensors, or sensor Settings.',
+                  'Use the Camera button in the bottom menu to scan tree canopies or fallen walnuts.',
                 ],
                 whatToExpect:
                   'Your orchard counts and care logs save locally in SQLite even offline, and sync to the cloud when signed in.',
               }}
             />
+            <TouchableOpacity
+              accessibilityLabel="Latest Orchard Alerts"
+              style={styles.bellBtn}
+              onPress={() => setAlertsModalVisible(true)}
+            >
+              <Ionicons
+                name={careFeed.length > 0 ? 'notifications' : 'notifications-outline'}
+                size={19}
+                color={Colors.walnutGreen[800]}
+              />
+              {careFeed.length > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>
+                    {careFeed.length > 9 ? '9+' : careFeed.length}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.syncChip}
               onPress={() => router.push('/auth')}
@@ -148,43 +170,6 @@ export default function OrchardDashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
-
-        {publishedCareBanner && (
-          <View style={styles.guidanceBanner}>
-            <View style={styles.guidanceBannerHeader}>
-              <Ionicons
-                name="megaphone-outline"
-                size={16}
-                color={Colors.walnutGreen[900]}
-              />
-              <Text style={styles.guidanceBannerTitle}>
-                Daily Orchard Guidance
-              </Text>
-            </View>
-            <Text style={styles.guidanceBannerBody}>{publishedCareBanner}</Text>
-          </View>
-        )}
-
-        {careFeed.length > 0 && (
-          <View style={styles.alertFeedCard}>
-            <View style={styles.guidanceBannerHeader}>
-              <Ionicons
-                name="notifications-outline"
-                size={15}
-                color={Colors.walnutShell[700]}
-              />
-              <Text style={styles.alertFeedHeader}>
-                Latest Orchard Alerts ({careFeed.length})
-              </Text>
-            </View>
-            {careFeed.slice(0, 3).map((item) => (
-              <View key={item._id} style={styles.alertFeedItem}>
-                <Text style={styles.alertFeedTitle}>{item.title}</Text>
-                <Text style={styles.alertFeedBody}>{item.body}</Text>
-              </View>
-            ))}
-          </View>
-        )}
 
         {/* Demo Mode Banner for Signed-Out Users */}
         {!isSignedIn && (
@@ -206,158 +191,7 @@ export default function OrchardDashboardScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Daily & Weekly Care Briefing */}
-        <View style={styles.popupBar}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.popupBarTitle}>
-              {isSignedIn
-                ? 'Your Orchard Care Briefing'
-                : 'Demo Orchard Care Briefing'}
-            </Text>
-            <Text style={styles.popupBarSub}>
-              {isSignedIn
-                ? `${careSetup.locationZone} • ${careSetup.soilType.toUpperCase()} soil`
-                : 'Sample watering, feeding & winter countdowns'}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.popupTriggerBtn}
-            onPress={() => setActivePopup('daily')}
-          >
-            <Ionicons name="sunny" size={14} color="#FFFFFF" />
-            <Text style={styles.popupTriggerText}>Daily</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.popupTriggerBtnSecondary}
-            onPress={() => setActivePopup('weekly')}
-          >
-            <Ionicons
-              name="calendar"
-              size={14}
-              color={Colors.walnutGreen[900]}
-            />
-            <Text style={styles.popupTriggerTextSecondary}>Weekly</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* AI Camera & Season Yield Hero Card */}
-        <View style={styles.heroCard}>
-          <View style={styles.heroTopRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.heroEyebrow}>CAMERA AI & SEASON YIELD</Text>
-              <Text style={styles.heroStageTitle}>
-                Post-Harvest & Winter Prep
-              </Text>
-              <Text style={styles.heroDesc}>
-                Count walnuts in the tree canopy or spot fallen nuts hidden under
-                autumn leaves.
-              </Text>
-            </View>
-            <View style={styles.yieldSummaryBox}>
-              <Text style={styles.yieldValue}>{totalEstimatedNuts}</Text>
-              <Text style={styles.yieldLabel}>Est. Nuts</Text>
-              <View style={styles.yieldDivider} />
-              <Text style={styles.yieldKg}>{totalEstimatedKg} kg</Text>
-            </View>
-          </View>
-
-          <View style={styles.heroActionsRow}>
-            <TouchableOpacity
-              style={styles.primaryActionBtn}
-              onPress={() =>
-                router.push(
-                  isSignedIn ? '/(tabs)/scanner?mode=canopy' : '/auth'
-                )
-              }
-            >
-              <Ionicons
-                name={isSignedIn ? 'camera' : 'lock-closed'}
-                size={17}
-                color="#FFFFFF"
-              />
-              <Text style={styles.primaryActionText}>
-                {isSignedIn ? 'Count Tree Nuts' : 'Sign In to Count'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.secondaryActionBtn}
-              onPress={() =>
-                router.push(
-                  isSignedIn ? '/(tabs)/scanner?mode=ground' : '/auth'
-                )
-              }
-            >
-              <Ionicons
-                name={isSignedIn ? 'locate' : 'lock-closed'}
-                size={17}
-                color={Colors.walnutGreen[900]}
-              />
-              <Text style={styles.secondaryActionText}>
-                {isSignedIn ? 'Find Fallen Nuts' : 'Sign In to Pick'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* WALNUTS ORCHARD SENSORS FRONT DISPLAY STRIP */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sensorHeaderLeft}>
-            <Ionicons name="pulse" size={18} color={Colors.walnutGreen[700]} />
-            <Text style={styles.sectionTitle}>
-              {isSignedIn
-                ? 'Walnuts Orchard Sensors (Live Telemetry)'
-                : 'Demo Orchard Sensors (Sample)'}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <TouchableOpacity onPress={() => router.push('/shop')}>
-              <Text style={styles.sectionLink}>Shop Sensors →</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() =>
-                router.push(isSignedIn ? '/(tabs)/analytics' : '/auth')
-              }
-            >
-              <Text style={styles.sectionLink}>
-                {isSignedIn ? 'Settings →' : 'Sign In →'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.sensorGrid}>
-          {TUYA_SENSOR_NODES.map((sensor) => (
-            <TouchableOpacity
-              key={sensor.id}
-              style={styles.sensorCard}
-              onPress={() =>
-                router.push(isSignedIn ? '/(tabs)/analytics' : '/auth')
-              }
-            >
-              <View style={styles.sensorCardTop}>
-                <View style={styles.sensorIconCircle}>
-                  <Ionicons
-                    name={sensor.iconName as any}
-                    size={16}
-                    color={Colors.walnutGreen[700]}
-                  />
-                </View>
-                <View style={styles.sensorStatusPill}>
-                  <Text style={styles.sensorStatusText}>
-                    {sensor.statusLabel}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.sensorValue}>{sensor.valueDisplay}</Text>
-              <Text style={styles.sensorLabel}>{sensor.label}</Text>
-              <Text style={styles.sensorSub} numberOfLines={1}>
-                {sensor.subValueDisplay}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Priority Care Queue */}
+        {/* 1. UPCOMING CARE (Priority Care Queue on Top) */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
             {isSignedIn ? 'Upcoming Care' : 'Demo Upcoming Care'}
@@ -407,8 +241,152 @@ export default function OrchardDashboardScreen() {
           </TouchableOpacity>
         ))}
 
-        {/* Grouped Orchard Fields, 4-Quadrant Sampling & Insurance Evidence */}
+        {/* 2. Dismissible Daily Orchard Guidance Banner */}
+        {publishedCareBanner && !guidanceDismissed && (
+          <View style={styles.guidanceBanner}>
+            <View style={styles.guidanceBannerHeader}>
+              <Ionicons
+                name="megaphone-outline"
+                size={16}
+                color={Colors.walnutGreen[900]}
+              />
+              <Text style={[styles.guidanceBannerTitle, { flex: 1 }]}>
+                Daily Orchard Guidance
+              </Text>
+              <TouchableOpacity
+                accessibilityLabel="Close Daily Orchard Guidance"
+                style={styles.guidanceCloseBtn}
+                onPress={() => setGuidanceDismissed(true)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={18} color={Colors.walnutGreen[900]} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.guidanceBannerBody}>{publishedCareBanner}</Text>
+          </View>
+        )}
+
+        {/* 3. Daily & Weekly Care Briefing */}
+        <View style={styles.popupBar}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.popupBarTitle}>
+              {isSignedIn
+                ? 'Your Orchard Care Briefing'
+                : 'Demo Orchard Care Briefing'}
+            </Text>
+            <Text style={styles.popupBarSub}>
+              {isSignedIn
+                ? `${careSetup.locationZone} • ${careSetup.soilType.toUpperCase()} soil`
+                : 'Sample watering, feeding & winter countdowns'}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.popupTriggerBtn}
+            onPress={() => setActivePopup('daily')}
+          >
+            <Ionicons name="sunny" size={14} color="#FFFFFF" />
+            <Text style={styles.popupTriggerText}>Daily</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.popupTriggerBtnSecondary}
+            onPress={() => setActivePopup('weekly')}
+          >
+            <Ionicons
+              name="calendar"
+              size={14}
+              color={Colors.walnutGreen[900]}
+            />
+            <Text style={styles.popupTriggerTextSecondary}>Weekly</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 4. Orchard Field Blocks (Collapsed by default; tap any field chip to expand) */}
         <OrchardFieldsSection />
+
+        {/* 5. WALNUTS ORCHARD SENSORS (Collapsible Card with Shop & Settings inside) */}
+        <View style={styles.sensorsCollapseCard}>
+          <TouchableOpacity
+            style={styles.sensorsCollapseHeader}
+            onPress={() => setSensorsExpanded((prev) => !prev)}
+          >
+            <View style={[styles.sensorHeaderLeft, { flex: 1 }]}>
+              <Ionicons name="pulse" size={18} color={Colors.walnutGreen[700]} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.sectionTitle}>
+                  {isSignedIn
+                    ? 'Walnuts Orchard Sensors (Live Telemetry)'
+                    : 'Demo Orchard Sensors (Sample)'}
+                </Text>
+                <Text style={styles.sensorsCollapseSub}>
+                  {TUYA_SENSOR_NODES.length} sensors • Tap to{' '}
+                  {sensorsExpanded ? 'collapse' : 'view telemetry, shop & settings'}
+                </Text>
+              </View>
+            </View>
+            <Ionicons
+              name={sensorsExpanded ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={Colors.walnutGreen[800]}
+            />
+          </TouchableOpacity>
+
+          {sensorsExpanded && (
+            <View style={{ marginTop: 10 }}>
+              <View style={styles.sensorsActionBar}>
+                <TouchableOpacity
+                  style={styles.sensorsActionPill}
+                  onPress={() => router.push('/shop')}
+                >
+                  <Ionicons name="cart-outline" size={14} color={Colors.walnutGreen[800]} />
+                  <Text style={styles.sectionLink}>Shop Sensors →</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.sensorsActionPill}
+                  onPress={() =>
+                    router.push(isSignedIn ? '/(tabs)/analytics' : '/auth')
+                  }
+                >
+                  <Ionicons name="settings-outline" size={14} color={Colors.walnutGreen[800]} />
+                  <Text style={styles.sectionLink}>
+                    {isSignedIn ? 'Settings →' : 'Sign In →'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.sensorGrid}>
+                {TUYA_SENSOR_NODES.map((sensor) => (
+                  <TouchableOpacity
+                    key={sensor.id}
+                    style={styles.sensorCard}
+                    onPress={() =>
+                      router.push(isSignedIn ? '/(tabs)/analytics' : '/auth')
+                    }
+                  >
+                    <View style={styles.sensorCardTop}>
+                      <View style={styles.sensorIconCircle}>
+                        <Ionicons
+                          name={sensor.iconName as any}
+                          size={16}
+                          color={Colors.walnutGreen[700]}
+                        />
+                      </View>
+                      <View style={styles.sensorStatusPill}>
+                        <Text style={styles.sensorStatusText}>
+                          {sensor.statusLabel}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.sensorValue}>{sensor.valueDisplay}</Text>
+                    <Text style={styles.sensorLabel}>{sensor.label}</Text>
+                    <Text style={styles.sensorSub} numberOfLines={1}>
+                      {sensor.subValueDisplay}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
 
         {/* Legal & Google Play Safety Footer */}
         <TouchableOpacity
@@ -514,6 +492,64 @@ export default function OrchardDashboardScreen() {
                 </View>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Latest Orchard Alerts Modal (Bell Icon) */}
+      <Modal
+        visible={alertsModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAlertsModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { maxHeight: '78%' }]}>
+            <View style={styles.modalBadgeRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons
+                  name="notifications"
+                  size={18}
+                  color={Colors.walnutShell[700]}
+                />
+                <Text style={styles.modalTitle}>
+                  Latest Orchard Alerts ({careFeed.length})
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setAlertsModalVisible(false)}>
+                <Ionicons
+                  name="close-circle"
+                  size={24}
+                  color={Colors.walnutGreen[800]}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ marginVertical: 10 }}>
+              {careFeed.length === 0 ? (
+                <Text style={styles.emptyAlertsText}>
+                  No orchard alerts right now. Weather, blight, and fertilizing
+                  broadcasts pushed by WalnutIQ appear here.
+                </Text>
+              ) : (
+                careFeed.map((item) => (
+                  <View key={item._id} style={styles.alertFeedItem}>
+                    <Text style={styles.alertCategoryTag}>
+                      {item.category.toUpperCase()}
+                    </Text>
+                    <Text style={styles.alertFeedTitle}>{item.title}</Text>
+                    <Text style={styles.alertFeedBody}>{item.body}</Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[styles.modalCloseBtn, { flex: 0, width: '100%' }]}
+              onPress={() => setAlertsModalVisible(false)}
+            >
+              <Text style={styles.modalCloseBtnText}>Close</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1183,5 +1219,90 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.walnutShell[700],
     marginTop: 2,
+  },
+  bellBtn: {
+    position: 'relative',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Colors.walnutGreen[100],
+    borderWidth: 1,
+    borderColor: Colors.walnutGreen[300],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  guidanceCloseBtn: {
+    padding: 2,
+    borderRadius: 8,
+  },
+  sensorsCollapseCard: {
+    backgroundColor: Colors.surface.card,
+    borderWidth: 1,
+    borderColor: Colors.walnutGreen[200],
+    borderRadius: 16,
+    padding: 12,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  sensorsCollapseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  sensorsCollapseSub: {
+    fontSize: 11,
+    color: Colors.text.secondary,
+    marginTop: 2,
+  },
+  sensorsActionBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.walnutGreen[100],
+  },
+  sensorsActionPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.walnutGreen[50],
+    borderWidth: 1,
+    borderColor: Colors.walnutGreen[200],
+    borderRadius: 10,
+    paddingVertical: 7,
+  },
+  emptyAlertsText: {
+    fontSize: 13,
+    color: Colors.text.secondary,
+    lineHeight: 19,
+    paddingVertical: 8,
+  },
+  alertCategoryTag: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: Colors.walnutGreen[700],
+    marginBottom: 2,
   },
 });

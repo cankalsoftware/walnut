@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   SafeAreaView,
   Alert,
   Share,
+  Modal,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../src/theme/colors';
 import {
@@ -53,9 +54,13 @@ const NOTIFICATION_TOPIC_OPTIONS = [
 
 export default function GrowerAccountScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const {
     isSignedIn,
     userProfile,
+    myWholesalerProfile,
+    buyRequests,
+    marketplaceThreads,
     lastRecoveryCode,
     clearLastRecoveryCode,
     trees,
@@ -67,12 +72,10 @@ export default function GrowerAccountScreen() {
     signInWithEmail,
     registerWithPhone,
     signInWithPhone,
-    completeMarketplaceOnboarding,
-    setEnableOrchardTools,
+    saveAccountSettings,
     signOutToOfflineMode,
     deleteAccountAndData,
     syncPendingToConvex,
-    updateGrowerPreferences,
   } = useWalnutCloud();
 
   const [authTab, setAuthTab] = useState<'register' | 'phone_login' | 'email_login'>('register');
@@ -82,26 +85,379 @@ export default function GrowerAccountScreen() {
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [nameInput, setNameInput] = useState('');
-  const [onboardPhone, setOnboardPhone] = useState(userProfile.phone || '');
-  const [onboardName, setOnboardName] = useState(userProfile.displayName || '');
-  const [onboardRole, setOnboardRole] = useState<AccountType>(
+
+  // Explicit signed-in draft state (committed via "Save Account Settings")
+  const [draftRole, setDraftRole] = useState<AccountType>(
     userProfile.accountType || 'producer'
   );
+  const [draftEnableOrchardTools, setDraftEnableOrchardTools] = useState<boolean>(
+    Boolean(userProfile.enableOrchardTools)
+  );
+  const [draftDisplayName, setDraftDisplayName] = useState(
+    userProfile.displayName || ''
+  );
+  const [draftPhone, setDraftPhone] = useState(userProfile.phone || '');
+  const [draftExperienceLevel, setDraftExperienceLevel] =
+    useState<GrowerExperienceLevel>(userProfile.experienceLevel);
+  const [draftNotificationTopics, setDraftNotificationTopics] = useState<string[]>(
+    userProfile.notificationTopics
+  );
+  const [draftPushEnabled, setDraftPushEnabled] = useState<boolean>(
+    userProfile.pushNotificationsEnabled
+  );
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+  const [authActionFeedback, setAuthActionFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [pendingNavAction, setPendingNavAction] = useState<any>(null);
+
+  const isValidPhoneDigits = (raw: string) => {
+    const d = raw.replace(/\D/g, '');
+    return d.length >= 8 && d.length <= 15;
+  };
+  const clearFieldError = (key: string) => {
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: '' } : prev));
+  };
+
+  const allowLeaveRef = useRef(false);
+  const isDirtyRef = useRef(false);
+
+  const isPureWholesaler =
+    isSignedIn &&
+    userProfile.accountType === 'wholesaler' &&
+    !userProfile.enableOrchardTools;
+  const isDualRole =
+    isSignedIn &&
+    userProfile.accountType === 'wholesaler' &&
+    userProfile.enableOrchardTools;
+  const draftShowOrchardTools =
+    isSignedIn && (draftRole === 'producer' || draftEnableOrchardTools);
+
+  const normalizedSavedTopics = useMemo(
+    () => [...userProfile.notificationTopics].sort().join(','),
+    [userProfile.notificationTopics]
+  );
+  const normalizedDraftTopics = useMemo(
+    () => [...draftNotificationTopics].sort().join(','),
+    [draftNotificationTopics]
+  );
+
+  const hasUnsavedChanges = useMemo(() => {
+    if (!isSignedIn) {
+      if (authTab !== 'register') return false;
+      return Boolean(
+        nameInput.trim() ||
+          phoneInput.trim() ||
+          emailInput.trim() ||
+          passwordInput.trim() ||
+          roleChoice !== 'producer' ||
+          alsoOrchardMode
+      );
+    }
+    const effectiveDraftOrchard =
+      draftRole === 'wholesaler' ? draftEnableOrchardTools : false;
+    const effectiveSavedOrchard =
+      userProfile.accountType === 'wholesaler'
+        ? userProfile.enableOrchardTools
+        : false;
+    const baseDirty =
+      draftRole !== userProfile.accountType ||
+      effectiveDraftOrchard !== effectiveSavedOrchard ||
+      draftDisplayName.trim() !== userProfile.displayName.trim() ||
+      draftPhone.trim() !== (userProfile.phone || '').trim();
+    if (baseDirty) return true;
+
+    if (draftRole === 'producer' || draftEnableOrchardTools) {
+      return (
+        draftExperienceLevel !== userProfile.experienceLevel ||
+        draftPushEnabled !== userProfile.pushNotificationsEnabled ||
+        normalizedDraftTopics !== normalizedSavedTopics
+      );
+    }
+    return false;
+  }, [
+    isSignedIn,
+    authTab,
+    nameInput,
+    phoneInput,
+    emailInput,
+    passwordInput,
+    roleChoice,
+    alsoOrchardMode,
+    draftRole,
+    draftEnableOrchardTools,
+    draftDisplayName,
+    draftPhone,
+    draftExperienceLevel,
+    draftPushEnabled,
+    normalizedDraftTopics,
+    normalizedSavedTopics,
+    userProfile.accountType,
+    userProfile.enableOrchardTools,
+    userProfile.displayName,
+    userProfile.phone,
+    userProfile.experienceLevel,
+    userProfile.pushNotificationsEnabled,
+  ]);
+
+  isDirtyRef.current = hasUnsavedChanges;
+
+  useEffect(() => {
+    if (!isDirtyRef.current) {
+      setDraftRole(userProfile.accountType || 'producer');
+      setDraftEnableOrchardTools(Boolean(userProfile.enableOrchardTools));
+      setDraftDisplayName(userProfile.displayName || '');
+      setDraftPhone(userProfile.phone || '');
+      setDraftExperienceLevel(userProfile.experienceLevel);
+      setDraftNotificationTopics(userProfile.notificationTopics);
+      setDraftPushEnabled(userProfile.pushNotificationsEnabled);
+    }
+  }, [
+    userProfile.accountType,
+    userProfile.enableOrchardTools,
+    userProfile.displayName,
+    userProfile.phone,
+    userProfile.experienceLevel,
+    userProfile.notificationTopics,
+    userProfile.pushNotificationsEnabled,
+  ]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
+      if (allowLeaveRef.current || !hasUnsavedChanges) {
+        return;
+      }
+      e.preventDefault();
+      setPendingNavAction(e.data.action);
+      setShowUnsavedModal(true);
+    });
+    return unsubscribe;
+  }, [navigation, hasUnsavedChanges]);
+
+  const handleDiscardDrafts = () => {
+    setSaveFeedback(null);
+    if (isSignedIn) {
+      setDraftRole(userProfile.accountType || 'producer');
+      setDraftEnableOrchardTools(Boolean(userProfile.enableOrchardTools));
+      setDraftDisplayName(userProfile.displayName || '');
+      setDraftPhone(userProfile.phone || '');
+      setDraftExperienceLevel(userProfile.experienceLevel);
+      setDraftNotificationTopics(userProfile.notificationTopics);
+      setDraftPushEnabled(userProfile.pushNotificationsEnabled);
+    } else {
+      setRoleChoice('producer');
+      setAlsoOrchardMode(false);
+      setNameInput('');
+      setPhoneInput('');
+      setEmailInput('');
+      setPasswordInput('');
+    }
+  };
+
+  const navigateToRoleHome = (
+    targetRole: AccountType,
+    targetOrchardTools: boolean
+  ) => {
+    allowLeaveRef.current = true;
+    const pureWholesaler = targetRole === 'wholesaler' && !targetOrchardTools;
+    router.replace(pureWholesaler ? '/(tabs)/marketplace' : '/(tabs)');
+  };
+
+  const handleRegisterSubmit = async () => {
+    const errs: Record<string, string> = {};
+    if (nameInput.trim().length < 2) {
+      errs.regName = 'Enter your full name or orchard/company name (at least 2 chars).';
+    }
+    if (!isValidPhoneDigits(phoneInput)) {
+      errs.regPhone = 'Enter a valid 8–15 digit mobile number with country code (e.g. +905551234567).';
+    }
+    if (emailInput.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.trim())) {
+      errs.regEmail = 'Enter a valid email address or leave this field blank.';
+    }
+    if (passwordInput.length < 8) {
+      errs.regPassword = 'Password must be at least 8 characters.';
+    }
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setAuthActionFeedback({
+        type: 'error',
+        message: `Please fix the ${Object.keys(errs).length} required field(s) highlighted in red above.`,
+      });
+      return;
+    }
+    setAuthActionFeedback(null);
+    const res = await registerWithPhone({
+      displayName: nameInput,
+      phone: phoneInput,
+      password: passwordInput,
+      email: emailInput,
+      accountType: roleChoice,
+      enableOrchardTools: roleChoice === 'wholesaler' ? alsoOrchardMode : false,
+    });
+    if (!res.ok) {
+      setAuthActionFeedback({
+        type: 'error',
+        message: 'Could not create account. Check the notice banner above for details.',
+      });
+    }
+  };
+
+  const handlePhoneLoginSubmit = async () => {
+    const errs: Record<string, string> = {};
+    if (!isValidPhoneDigits(phoneInput)) {
+      errs.loginPhone = 'Enter your registered 8–15 digit mobile number with country code.';
+    }
+    if (!passwordInput) {
+      errs.loginPassword = 'Enter your account password.';
+    }
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setAuthActionFeedback({
+        type: 'error',
+        message: 'Please enter both your mobile number and password.',
+      });
+      return;
+    }
+    setAuthActionFeedback(null);
+    const ok = await signInWithPhone(phoneInput, passwordInput);
+    if (!ok) {
+      setAuthActionFeedback({
+        type: 'error',
+        message: 'Mobile sign-in failed. Check your mobile number, password, or notice above.',
+      });
+    }
+  };
+
+  const handleEmailLoginSubmit = async () => {
+    const errs: Record<string, string> = {};
+    if (!emailInput.trim() || !emailInput.includes('@')) {
+      errs.loginEmail = 'Enter a valid email address.';
+    }
+    if (!passwordInput) {
+      errs.loginPassword = 'Enter your account password.';
+    }
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setAuthActionFeedback({
+        type: 'error',
+        message: 'Please enter both your email address and password.',
+      });
+      return;
+    }
+    setAuthActionFeedback(null);
+    await signInWithEmail(emailInput, passwordInput, nameInput);
+  };
+
+  const handleSaveAccountSettings = async (navigateAfter = true) => {
+    const cleanName = (draftDisplayName || userProfile.displayName || '').trim();
+    const errs: Record<string, string> = {};
+    if (cleanName.length < 2) {
+      errs.draftDisplayName = 'Enter Display / Company Name (at least 2 characters).';
+    }
+    if (!isValidPhoneDigits(draftPhone)) {
+      errs.draftPhone = 'Enter a valid 8–15 digit mobile number with country code (e.g. +905551234567).';
+    }
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setShowUnsavedModal(false);
+      setSaveFeedback({
+        type: 'error',
+        message: `Please fix ${Object.keys(errs).length} required field(s) highlighted in red above before saving.`,
+      });
+      return;
+    }
+
+    setIsSavingSettings(true);
+    setSaveFeedback(null);
+    const effectiveOrchard =
+      draftRole === 'wholesaler' ? draftEnableOrchardTools : false;
+    const result = await saveAccountSettings({
+      displayName: cleanName,
+      phone: draftPhone,
+      email: userProfile.email || undefined,
+      accountType: draftRole,
+      enableOrchardTools: effectiveOrchard,
+      experienceLevel: draftExperienceLevel,
+      notificationTopics: draftNotificationTopics,
+      pushNotificationsEnabled: draftPushEnabled,
+    });
+    setIsSavingSettings(false);
+
+    if (!result.ok) {
+      setShowUnsavedModal(false);
+      setSaveFeedback({
+        type: 'error',
+        message: result.error || 'Failed to save account settings.',
+      });
+      return;
+    }
+
+    isDirtyRef.current = false;
+    setShowUnsavedModal(false);
+    setPendingNavAction(null);
+    setSaveFeedback({
+      type: 'success',
+      message: 'Account settings saved and tabs updated.',
+    });
+
+    if (navigateAfter) {
+      navigateToRoleHome(draftRole, effectiveOrchard);
+    }
+  };
+
+  const handleHeaderBackPress = () => {
+    if (hasUnsavedChanges) {
+      setPendingNavAction(null);
+      setShowUnsavedModal(true);
+      return;
+    }
+    allowLeaveRef.current = true;
+    if (isPureWholesaler) {
+      router.replace('/(tabs)/marketplace');
+    } else {
+      router.back();
+    }
+  };
 
   const handleExportData = async () => {
-    const payload = JSON.stringify(
-      {
-        exportedAt: new Date().toISOString(),
-        userProfile,
-        careSetup,
-        trees,
-        localCache,
-      },
-      null,
-      2
-    );
+    const payload = isPureWholesaler
+      ? JSON.stringify(
+          {
+            exportedAt: new Date().toISOString(),
+            userProfile,
+            myWholesalerProfile,
+            buyRequests: buyRequests.filter(
+              (r) => r.userId === userProfile.clerkId
+            ),
+            marketplaceThreads,
+          },
+          null,
+          2
+        )
+      : JSON.stringify(
+          {
+            exportedAt: new Date().toISOString(),
+            userProfile,
+            careSetup,
+            trees,
+            localCache,
+            myWholesalerProfile,
+            marketplaceThreads,
+          },
+          null,
+          2
+        );
     await Share.share({
-      title: 'WalnutIQ Orchard Data Export (JSON)',
+      title: isPureWholesaler
+        ? 'WalnutIQ Wholesaler Data Export (JSON)'
+        : 'WalnutIQ Orchard & Trade Data Export (JSON)',
       message: payload,
     });
   };
@@ -109,7 +465,7 @@ export default function GrowerAccountScreen() {
   const handleDeleteAccount = () => {
     Alert.alert(
       'Delete Account & Data',
-      'This will permanently delete your WalnutIQ account, synced orchard records, and local offline cache. Continue?',
+      'This will permanently delete your WalnutIQ login, marketplace listings/profiles, messages, synced records, and local offline cache. Continue?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -134,14 +490,16 @@ export default function GrowerAccountScreen() {
         <View style={styles.topRow}>
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => router.back()}
+            onPress={handleHeaderBackPress}
           >
             <Ionicons
               name="arrow-back"
               size={18}
               color={Colors.walnutGreen[900]}
             />
-            <Text style={styles.backBtnText}>Back to Orchard</Text>
+            <Text style={styles.backBtnText}>
+              {isPureWholesaler ? 'Back to Marketplace' : 'Back to Orchard'}
+            </Text>
           </TouchableOpacity>
 
           <View
@@ -158,15 +516,43 @@ export default function GrowerAccountScreen() {
               }
             />
             <Text style={styles.statusPillText}>
-              {isSignedIn ? 'BACKUP ACTIVE' : 'FIELD OFFLINE MODE'}
+              {!isSignedIn
+                ? 'OFFLINE DEMO MODE'
+                : isPureWholesaler
+                  ? 'ACCOUNT SYNCED'
+                  : 'BACKUP ACTIVE'}
             </Text>
           </View>
         </View>
 
-        <Text style={styles.title}>Grower Account & Orchard Backup</Text>
+        {hasUnsavedChanges && (
+          <View style={styles.unsavedBanner}>
+            <Ionicons name="warning" size={18} color="#9A3412" />
+            <Text style={styles.unsavedBannerText}>
+              {isSignedIn
+                ? "You have unsaved changes (including Account Type or settings). Tap 'Save Account Settings' to apply your menus."
+                : 'You have unsaved registration details. Complete account creation below or discard changes.'}
+            </Text>
+          </View>
+        )}
+
+        <Text style={styles.title}>
+          {!isSignedIn
+            ? 'WalnutIQ Account & Marketplace'
+            : isPureWholesaler
+              ? 'Wholesaler Account & Trade Settings'
+              : isDualRole
+                ? 'Dual-Role Buyer & Orchard Account'
+                : 'Grower Account & Orchard Backup'}
+        </Text>
         <Text style={styles.subtitle}>
-          Sign in with Google or Email to back up your walnut tree counts,
-          sensor readings, and care schedule across devices.
+          {!isSignedIn
+            ? 'Register with your mobile number (email optional) or sign in with Google to buy or sell walnut lots.'
+            : isPureWholesaler
+              ? 'Manage your wholesale buyer role, mobile contact, GDPR export, and Marketplace access.'
+              : isDualRole
+                ? 'Connected for wholesale buying alongside personal orchard care and crop listings.'
+                : 'Back up your walnut tree counts, crop listings, sensor readings, and care schedule across devices.'}
         </Text>
 
         {/* Active Account Card */}
@@ -177,7 +563,9 @@ export default function GrowerAccountScreen() {
                 name={
                   userProfile.authProvider === 'google'
                     ? 'logo-google'
-                    : 'mail'
+                    : userProfile.authProvider === 'phone'
+                      ? 'call'
+                      : 'mail'
                 }
                 size={22}
                 color="#FFFFFF"
@@ -187,18 +575,18 @@ export default function GrowerAccountScreen() {
               <Text style={styles.profileName}>
                 {isSignedIn
                   ? userProfile.displayName
-                  : 'Local Orchard Device (Not Signed In)'}
+                  : 'Local Device (Not Signed In)'}
               </Text>
               <Text style={styles.profileEmail}>
                 {isSignedIn
                   ? [userProfile.phone, userProfile.email].filter(Boolean).join(' • ') ||
                     'Complete mobile number below'
-                  : 'Data saved safely on your phone until you sign in'}
+                  : 'Sign in or create a Producer / Wholesaler account below'}
               </Text>
               <Text style={styles.profileMeta}>
                 {isSignedIn
-                  ? `${userProfile.accountType === 'wholesaler' ? 'Wholesaler Buyer' : 'Producer / Grower'} • 👍 ${userProfile.trustedSellerCount + userProfile.trustedBuyerCount} Trust Badges`
-                  : `${userProfile.orchardName} • ${userProfile.region}`}
+                  ? `${userProfile.accountType === 'wholesaler' ? (isDualRole ? 'Wholesaler + Grower' : 'Wholesaler Buyer') : 'Producer / Grower'} • 👍 ${userProfile.trustedSellerCount + userProfile.trustedBuyerCount} Trust Badges`
+                  : `${userProfile.region}`}
               </Text>
             </View>
           </View>
@@ -335,62 +723,81 @@ export default function GrowerAccountScreen() {
                     Full Name / Orchard or Company Name *
                   </Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, Boolean(fieldErrors.regName) && styles.inputError]}
                     value={nameInput}
-                    onChangeText={setNameInput}
+                    onChangeText={(t) => {
+                      setNameInput(t);
+                      clearFieldError('regName');
+                      setAuthActionFeedback(null);
+                    }}
                     placeholder="e.g. Valley Walnut Farms"
                     placeholderTextColor={Colors.text.muted}
                   />
+                  {Boolean(fieldErrors.regName) && (
+                    <Text style={styles.fieldErrorText}>{fieldErrors.regName}</Text>
+                  )}
 
                   <Text style={styles.inputLabel}>
                     Mobile Phone Number (Compulsory, with country code) *
                   </Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, Boolean(fieldErrors.regPhone) && styles.inputError]}
                     value={phoneInput}
-                    onChangeText={setPhoneInput}
+                    onChangeText={(t) => {
+                      setPhoneInput(t);
+                      clearFieldError('regPhone');
+                      setAuthActionFeedback(null);
+                    }}
                     keyboardType="phone-pad"
                     placeholder="+905551234567"
                     placeholderTextColor={Colors.text.muted}
                   />
+                  {Boolean(fieldErrors.regPhone) && (
+                    <Text style={styles.fieldErrorText}>{fieldErrors.regPhone}</Text>
+                  )}
 
                   <Text style={styles.inputLabel}>
                     Email Address (Optional — leave blank if no email)
                   </Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, Boolean(fieldErrors.regEmail) && styles.inputError]}
                     value={emailInput}
-                    onChangeText={setEmailInput}
+                    onChangeText={(t) => {
+                      setEmailInput(t);
+                      clearFieldError('regEmail');
+                      setAuthActionFeedback(null);
+                    }}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     placeholder="Optional (not required)"
                     placeholderTextColor={Colors.text.muted}
                   />
+                  {Boolean(fieldErrors.regEmail) && (
+                    <Text style={styles.fieldErrorText}>{fieldErrors.regEmail}</Text>
+                  )}
 
                   <Text style={styles.inputLabel}>
                     Password (minimum 8 characters) *
                   </Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, Boolean(fieldErrors.regPassword) && styles.inputError]}
                     value={passwordInput}
-                    onChangeText={setPasswordInput}
+                    onChangeText={(t) => {
+                      setPasswordInput(t);
+                      clearFieldError('regPassword');
+                      setAuthActionFeedback(null);
+                    }}
                     secureTextEntry
                     placeholder="At least 8 characters"
                     placeholderTextColor={Colors.text.muted}
                   />
+                  {Boolean(fieldErrors.regPassword) && (
+                    <Text style={styles.fieldErrorText}>{fieldErrors.regPassword}</Text>
+                  )}
 
                   <TouchableOpacity
                     style={styles.emailBtn}
-                    onPress={() =>
-                      void registerWithPhone({
-                        displayName: nameInput,
-                        phone: phoneInput,
-                        password: passwordInput,
-                        email: emailInput,
-                        accountType: roleChoice,
-                        enableOrchardTools: alsoOrchardMode,
-                      })
-                    }
+                    onPress={() => void handleRegisterSubmit()}
                   >
                     <Ionicons name="call-outline" size={18} color="#FFFFFF" />
                     <Text style={styles.emailBtnText}>
@@ -407,27 +814,41 @@ export default function GrowerAccountScreen() {
                   </Text>
                   <Text style={styles.inputLabel}>Mobile Phone Number *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, Boolean(fieldErrors.loginPhone) && styles.inputError]}
                     value={phoneInput}
-                    onChangeText={setPhoneInput}
+                    onChangeText={(t) => {
+                      setPhoneInput(t);
+                      clearFieldError('loginPhone');
+                      setAuthActionFeedback(null);
+                    }}
                     keyboardType="phone-pad"
                     placeholder="+905551234567"
                     placeholderTextColor={Colors.text.muted}
                   />
+                  {Boolean(fieldErrors.loginPhone) && (
+                    <Text style={styles.fieldErrorText}>{fieldErrors.loginPhone}</Text>
+                  )}
 
                   <Text style={styles.inputLabel}>Password *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, Boolean(fieldErrors.loginPassword) && styles.inputError]}
                     value={passwordInput}
-                    onChangeText={setPasswordInput}
+                    onChangeText={(t) => {
+                      setPasswordInput(t);
+                      clearFieldError('loginPassword');
+                      setAuthActionFeedback(null);
+                    }}
                     secureTextEntry
                     placeholder="8+ character password"
                     placeholderTextColor={Colors.text.muted}
                   />
+                  {Boolean(fieldErrors.loginPassword) && (
+                    <Text style={styles.fieldErrorText}>{fieldErrors.loginPassword}</Text>
+                  )}
 
                   <TouchableOpacity
                     style={styles.emailBtn}
-                    onPress={() => void signInWithPhone(phoneInput, passwordInput)}
+                    onPress={() => void handlePhoneLoginSubmit()}
                   >
                     <Ionicons name="log-in-outline" size={18} color="#FFFFFF" />
                     <Text style={styles.emailBtnText}>Sign In with Mobile</Text>
@@ -438,142 +859,225 @@ export default function GrowerAccountScreen() {
               {authTab === 'email_login' && (
                 <>
                   <Text style={styles.sectionTitle}>Sign In with Email</Text>
-                  <Text style={styles.inputLabel}>Email Address</Text>
+                  <Text style={styles.inputLabel}>Email Address *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, Boolean(fieldErrors.loginEmail) && styles.inputError]}
                     value={emailInput}
-                    onChangeText={setEmailInput}
+                    onChangeText={(t) => {
+                      setEmailInput(t);
+                      clearFieldError('loginEmail');
+                      setAuthActionFeedback(null);
+                    }}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     placeholder="you@example.com"
                     placeholderTextColor={Colors.text.muted}
                   />
+                  {Boolean(fieldErrors.loginEmail) && (
+                    <Text style={styles.fieldErrorText}>{fieldErrors.loginEmail}</Text>
+                  )}
 
-                  <Text style={styles.inputLabel}>Password</Text>
+                  <Text style={styles.inputLabel}>Password *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, Boolean(fieldErrors.loginPassword) && styles.inputError]}
                     value={passwordInput}
-                    onChangeText={setPasswordInput}
+                    onChangeText={(t) => {
+                      setPasswordInput(t);
+                      clearFieldError('loginPassword');
+                      setAuthActionFeedback(null);
+                    }}
                     secureTextEntry
                     placeholder="Your account password"
                     placeholderTextColor={Colors.text.muted}
                   />
+                  {Boolean(fieldErrors.loginPassword) && (
+                    <Text style={styles.fieldErrorText}>{fieldErrors.loginPassword}</Text>
+                  )}
 
                   <TouchableOpacity
                     style={styles.emailBtn}
-                    onPress={() =>
-                      void signInWithEmail(emailInput, passwordInput, nameInput)
-                    }
+                    onPress={() => void handleEmailLoginSubmit()}
                   >
                     <Ionicons name="mail-outline" size={18} color="#FFFFFF" />
                     <Text style={styles.emailBtnText}>Sign In with Email</Text>
                   </TouchableOpacity>
                 </>
               )}
+
+              {authActionFeedback && (
+                <View
+                  style={[
+                    styles.feedbackBox,
+                    authActionFeedback.type === 'error'
+                      ? styles.feedbackError
+                      : styles.feedbackSuccess,
+                  ]}
+                >
+                  <Text style={styles.feedbackText}>{authActionFeedback.message}</Text>
+                </View>
+              )}
             </View>
           </>
         )}
 
-        {/* Signed-In Marketplace Onboarding & Role Switch */}
+        {/* Signed-In Account Role, Mobile & Dynamic Menu Setup */}
         {isSignedIn && (
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>
-              Marketplace Role & Compulsory Mobile Setup
+              Account Type, Role & Mobile Number
             </Text>
-            {!userProfile.isMarketplaceOnboardingComplete ? (
-              <>
-                <Text style={styles.sectionDesc}>
-                  Add your compulsory mobile number and confirm your role to
-                  publish listings, complete your buyer profile, or chat in the
-                  Marketplace.
+            <Text style={styles.sectionDesc}>
+              {!userProfile.isMarketplaceOnboardingComplete
+                ? 'Choose your role and enter your compulsory mobile number to unlock tailored Marketplace menus.'
+                : 'Adjust your account mode or mobile number below, then tap "Save Account Settings" to dynamically update all tabs and menus.'}
+            </Text>
+
+            <Text style={styles.inputLabel}>Account Type *</Text>
+            <View style={styles.roleRow}>
+              <TouchableOpacity
+                style={[
+                  styles.roleCard,
+                  draftRole === 'producer' && styles.roleCardActive,
+                ]}
+                onPress={() => {
+                  setDraftRole('producer');
+                  setSaveFeedback(null);
+                }}
+              >
+                <Text style={styles.roleTitle}>🌳 Producer (Grower)</Text>
+                <Text style={styles.roleDesc}>
+                  Orchard fields, care calendar, Camera AI & crop listings
                 </Text>
-                <View style={styles.roleRow}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.roleCard,
+                  draftRole === 'wholesaler' && styles.roleCardActive,
+                ]}
+                onPress={() => {
+                  setDraftRole('wholesaler');
+                  setSaveFeedback(null);
+                }}
+              >
+                <Text style={styles.roleTitle}>🏪 Wholesaler (Buyer)</Text>
+                <Text style={styles.roleDesc}>
+                  Clean Buyer Hub: Marketplace, Buyers Hall & Buyer Desk
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {draftRole === 'wholesaler' && (
+              <TouchableOpacity
+                style={styles.optInRow}
+                onPress={() => {
+                  setDraftEnableOrchardTools((v) => !v);
+                  setSaveFeedback(null);
+                }}
+              >
+                <Ionicons
+                  name={draftEnableOrchardTools ? 'checkbox' : 'square-outline'}
+                  size={20}
+                  color={Colors.walnutGreen[800]}
+                />
+                <Text style={styles.optInText}>
+                  Also Enable Grower / Orchard Mode (unlocks personal Orchard,
+                  Care Plan & Camera AI tabs alongside buying)
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <Text style={styles.inputLabel}>Display / Company Name *</Text>
+            <TextInput
+              style={[
+                styles.input,
+                Boolean(fieldErrors.draftDisplayName) && styles.inputError,
+              ]}
+              value={draftDisplayName}
+              onChangeText={(text) => {
+                setDraftDisplayName(text);
+                clearFieldError('draftDisplayName');
+                setSaveFeedback(null);
+              }}
+              placeholder="Your name or business name"
+              placeholderTextColor={Colors.text.muted}
+            />
+            {Boolean(fieldErrors.draftDisplayName) && (
+              <Text style={styles.fieldErrorText}>
+                {fieldErrors.draftDisplayName}
+              </Text>
+            )}
+
+            <Text style={styles.inputLabel}>
+              Compulsory Mobile Number (E.164 with country code) *
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                Boolean(fieldErrors.draftPhone) && styles.inputError,
+              ]}
+              value={draftPhone}
+              onChangeText={(text) => {
+                setDraftPhone(text);
+                clearFieldError('draftPhone');
+                setSaveFeedback(null);
+              }}
+              keyboardType="phone-pad"
+              placeholder="+905551234567"
+              placeholderTextColor={Colors.text.muted}
+            />
+            {Boolean(fieldErrors.draftPhone) && (
+              <Text style={styles.fieldErrorText}>{fieldErrors.draftPhone}</Text>
+            )}
+
+            {!draftShowOrchardTools && (
+              <>
+                {hasUnsavedChanges && (
+                  <View style={styles.unsavedBanner}>
+                    <Ionicons name="warning" size={16} color="#9A3412" />
+                    <Text style={styles.unsavedBannerText}>
+                      Unsaved changes pending — tap Save Account Settings to update menus.
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.saveBtnRow}>
+                  {hasUnsavedChanges && (
+                    <TouchableOpacity
+                      style={styles.resetDraftBtn}
+                      onPress={handleDiscardDrafts}
+                    >
+                      <Text style={styles.resetDraftBtnText}>Reset</Text>
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity
                     style={[
-                      styles.roleCard,
-                      onboardRole === 'producer' && styles.roleCardActive,
+                      styles.emailBtn,
+                      { flex: 1, marginTop: 0 },
+                      isSavingSettings && { opacity: 0.7 },
                     ]}
-                    onPress={() => setOnboardRole('producer')}
+                    disabled={isSavingSettings}
+                    onPress={() => void handleSaveAccountSettings(true)}
                   >
-                    <Text style={styles.roleTitle}>🌳 Producer</Text>
-                    <Text style={styles.roleDesc}>Grow & sell walnuts</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.roleCard,
-                      onboardRole === 'wholesaler' && styles.roleCardActive,
-                    ]}
-                    onPress={() => setOnboardRole('wholesaler')}
-                  >
-                    <Text style={styles.roleTitle}>🏪 Wholesaler</Text>
-                    <Text style={styles.roleDesc}>Buy wholesale lots</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.inputLabel}>Display / Company Name *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={onboardName}
-                  onChangeText={setOnboardName}
-                  placeholder="Your name or business name"
-                />
-                <Text style={styles.inputLabel}>
-                  Compulsory Mobile Number (E.164) *
-                </Text>
-                <TextInput
-                  style={styles.input}
-                  value={onboardPhone}
-                  onChangeText={setOnboardPhone}
-                  keyboardType="phone-pad"
-                  placeholder="+905551234567"
-                />
-                <TouchableOpacity
-                  style={styles.emailBtn}
-                  onPress={() =>
-                    void completeMarketplaceOnboarding({
-                      displayName: onboardName || userProfile.displayName,
-                      phone: onboardPhone,
-                      email: userProfile.email || undefined,
-                      accountType: onboardRole,
-                      enableOrchardTools: alsoOrchardMode,
-                    })
-                  }
-                >
-                  <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
-                  <Text style={styles.emailBtnText}>
-                    Save Role & Mobile Number
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={styles.sectionDesc}>
-                  Registered Role:{' '}
-                  {userProfile.accountType === 'wholesaler'
-                    ? 'Wholesaler (Buyer)'
-                    : 'Producer (Walnut Grower)'}{' '}
-                  • Mobile: {userProfile.phone}
-                </Text>
-                {userProfile.accountType === 'wholesaler' && (
-                  <TouchableOpacity
-                    style={styles.optInRow}
-                    onPress={() =>
-                      void setEnableOrchardTools(!userProfile.enableOrchardTools)
-                    }
-                  >
-                    <Ionicons
-                      name={
-                        userProfile.enableOrchardTools
-                          ? 'checkbox'
-                          : 'square-outline'
-                      }
-                      size={20}
-                      color={Colors.walnutGreen[800]}
-                    />
-                    <Text style={styles.optInText}>
-                      Also Enable Grower / Orchard Mode (unlocks personal Orchard,
-                      Care Plan & Camera AI tabs)
+                    <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                    <Text style={styles.emailBtnText}>
+                      {isSavingSettings
+                        ? 'Saving Settings...'
+                        : 'Save Account Settings'}
                     </Text>
                   </TouchableOpacity>
+                </View>
+
+                {saveFeedback && (
+                  <View
+                    style={[
+                      styles.feedbackBox,
+                      saveFeedback.type === 'error'
+                        ? styles.feedbackError
+                        : styles.feedbackSuccess,
+                    ]}
+                  >
+                    <Text style={styles.feedbackText}>{saveFeedback.message}</Text>
+                  </View>
                 )}
               </>
             )}
@@ -581,8 +1085,7 @@ export default function GrowerAccountScreen() {
         )}
 
         {/* Grower Care Level & Notification Preferences (Producer or Opt-in Orchard Mode) */}
-        {(userProfile.accountType === 'producer' ||
-          userProfile.enableOrchardTools) && (
+        {draftShowOrchardTools && (
         <View style={styles.sectionCard}>
           <View
             style={{
@@ -602,9 +1105,10 @@ export default function GrowerAccountScreen() {
                 howToDoIt: [
                   'Tap Beginner, Experienced, or Expert to tailor guidance complexity.',
                   'Toggle Push Alerts On/Off and tap topic chips (Weather, Fertilizing Season, Blight, Seminars & Expos, Maintenance, News).',
+                  'Tap "Save Account Settings" below to commit all role & care changes.',
                 ],
                 whatToExpect:
-                  'Your preferences save immediately and sync to Convex so WalnutIQ admin broadcasts reach you with relevant updates.',
+                  'Saving commits your preferences to Convex and updates your navigation menus immediately.',
               }}
             />
           </View>
@@ -616,14 +1120,15 @@ export default function GrowerAccountScreen() {
           <Text style={styles.prefSubheading}>Experience Level</Text>
           <View style={styles.levelRow}>
             {EXPERIENCE_LEVELS.map((lvl) => {
-              const active = userProfile.experienceLevel === lvl.id;
+              const active = draftExperienceLevel === lvl.id;
               return (
                 <TouchableOpacity
                   key={lvl.id}
                   style={[styles.levelBtn, active && styles.levelBtnActive]}
-                  onPress={() =>
-                    void updateGrowerPreferences({ experienceLevel: lvl.id })
-                  }
+                  onPress={() => {
+                    setDraftExperienceLevel(lvl.id);
+                    setSaveFeedback(null);
+                  }}
                 >
                   <Text
                     style={[
@@ -641,49 +1146,42 @@ export default function GrowerAccountScreen() {
 
           <View style={styles.pushToggleRow}>
             <Text style={styles.prefSubheading}>
-              Notification Topics (
-              {userProfile.pushNotificationsEnabled ? 'Enabled' : 'Paused'})
+              Notification Topics ({draftPushEnabled ? 'Enabled' : 'Paused'})
             </Text>
             <TouchableOpacity
               style={[
                 styles.pushPill,
-                userProfile.pushNotificationsEnabled && styles.pushPillActive,
+                draftPushEnabled && styles.pushPillActive,
               ]}
-              onPress={() =>
-                void updateGrowerPreferences({
-                  pushNotificationsEnabled:
-                    !userProfile.pushNotificationsEnabled,
-                })
-              }
+              onPress={() => {
+                setDraftPushEnabled((prev) => !prev);
+                setSaveFeedback(null);
+              }}
             >
               <Text
                 style={[
                   styles.pushPillText,
-                  userProfile.pushNotificationsEnabled &&
-                    styles.pushPillTextActive,
+                  draftPushEnabled && styles.pushPillTextActive,
                 ]}
               >
-                {userProfile.pushNotificationsEnabled ? 'Alerts ON' : 'Paused'}
+                {draftPushEnabled ? 'Alerts ON' : 'Paused'}
               </Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.topicWrap}>
             {NOTIFICATION_TOPIC_OPTIONS.map((topic) => {
-              const selected = userProfile.notificationTopics.includes(
-                topic.id
-              );
+              const selected = draftNotificationTopics.includes(topic.id);
               return (
                 <TouchableOpacity
                   key={topic.id}
                   style={[styles.topicChip, selected && styles.topicChipActive]}
                   onPress={() => {
                     const next = selected
-                      ? userProfile.notificationTopics.filter(
-                          (t) => t !== topic.id
-                        )
-                      : [...userProfile.notificationTopics, topic.id];
-                    void updateGrowerPreferences({ notificationTopics: next });
+                      ? draftNotificationTopics.filter((t) => t !== topic.id)
+                      : [...draftNotificationTopics, topic.id];
+                    setDraftNotificationTopics(next);
+                    setSaveFeedback(null);
                   }}
                 >
                   <Ionicons
@@ -707,45 +1205,112 @@ export default function GrowerAccountScreen() {
               );
             })}
           </View>
+
+          {hasUnsavedChanges && (
+            <View style={[styles.unsavedBanner, { marginTop: 12, marginBottom: 4 }]}>
+              <Ionicons name="warning" size={16} color="#9A3412" />
+              <Text style={styles.unsavedBannerText}>
+                Unsaved changes pending — tap Save Account Settings to apply.
+              </Text>
+            </View>
+          )}
+
+          <View style={[styles.saveBtnRow, { marginTop: 10 }]}>
+            {hasUnsavedChanges && (
+              <TouchableOpacity
+                style={styles.resetDraftBtn}
+                onPress={handleDiscardDrafts}
+              >
+                <Text style={styles.resetDraftBtnText}>Reset</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[
+                styles.emailBtn,
+                { flex: 1, marginTop: 0 },
+                isSavingSettings && { opacity: 0.7 },
+              ]}
+              disabled={isSavingSettings}
+              onPress={() => void handleSaveAccountSettings(true)}
+            >
+              <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+              <Text style={styles.emailBtnText}>
+                {isSavingSettings
+                  ? 'Saving Settings...'
+                  : 'Save Account Settings'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {saveFeedback && (
+            <View
+              style={[
+                styles.feedbackBox,
+                saveFeedback.type === 'error'
+                  ? styles.feedbackError
+                  : styles.feedbackSuccess,
+              ]}
+            >
+              <Text style={styles.feedbackText}>{saveFeedback.message}</Text>
+            </View>
+          )}
         </View>
         )}
 
-        {/* Orchard Backup Controls */}
+        {/* Account Data, Export & Backup Controls */}
         <View style={styles.sectionCard}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={styles.sectionTitle}>Orchard Cloud Backup</Text>
+            <Text style={styles.sectionTitle}>
+              {isPureWholesaler
+                ? 'Account Data, Export & Security'
+                : 'Orchard & Trade Cloud Backup'}
+            </Text>
             <HelpButton
               help={{
-                title: 'Cloud Backup, GDPR Export & Deletion',
-                whatItDoes:
-                  'Manages manual Convex backup, GDPR JSON data export, Offline Lock Mode, and permanent account deletion.',
-                howToDoIt: [
-                  'Tap "Back Up Pending Orchard Logs" to upload queued SQLite records immediately.',
-                  'Tap "Export My Orchard Data (GDPR JSON)" to download or share a copy of your orchard records.',
-                  'Tap "Log Out" to lock orchard menus, or "Delete Account & Data" to erase all cloud + local records.',
-                ],
+                title: isPureWholesaler
+                  ? 'Account Data, GDPR Export & Deletion'
+                  : 'Cloud Backup, GDPR Export & Deletion',
+                whatItDoes: isPureWholesaler
+                  ? 'Manages GDPR JSON export of your Wholesaler profile, Buy Requests, and trade threads, plus Log Out and permanent account deletion.'
+                  : 'Manages manual Convex backup, GDPR JSON data export, Log Out, and permanent account deletion.',
+                howToDoIt: isPureWholesaler
+                  ? [
+                      'Tap "Export My Buyer Data (GDPR JSON)" to download or share your marketplace records.',
+                      'Tap "Log Out" to sign out safely, or "Delete Account & Data" to erase all cloud + local records.',
+                    ]
+                  : [
+                      'Tap "Back Up Pending Orchard Logs" to upload queued SQLite records immediately.',
+                      'Tap "Export My Orchard & Trade Data (GDPR JSON)" to download or share a copy of your records.',
+                      'Tap "Log Out" to lock orchard menus, or "Delete Account & Data" to erase all cloud + local records.',
+                    ],
                 whatToExpect:
-                  'Account deletion permanently removes your Convex records, community messages, local SQLite cache, and Clerk login.',
+                  'Account deletion permanently removes your Convex records, marketplace listings/profiles, messages, local SQLite cache, and Clerk login.',
               }}
             />
           </View>
           <Text style={styles.sectionDesc}>
-            Your tree counts and care logs always work offline in the grove and
-            back up automatically when signal returns.
+            {isPureWholesaler
+              ? 'Your buyer profile, buy requests, and trade messages sync securely with Convex Cloud.'
+              : 'Your tree counts, crop drafts, and care logs work offline in the grove and back up automatically when signal returns.'}
           </Text>
 
-          <TouchableOpacity
-            style={styles.syncActionBtn}
-            onPress={() => void syncPendingToConvex()}
-          >
-            <Ionicons name="cloud-upload" size={16} color="#FFFFFF" />
-            <Text style={styles.syncActionBtnText}>
-              Back Up Pending Orchard Logs ({pendingUploadCount})
-            </Text>
-          </TouchableOpacity>
+          {!isPureWholesaler && (
+            <TouchableOpacity
+              style={styles.syncActionBtn}
+              onPress={() => void syncPendingToConvex()}
+            >
+              <Ionicons name="cloud-upload" size={16} color="#FFFFFF" />
+              <Text style={styles.syncActionBtnText}>
+                Back Up Pending Orchard Logs ({pendingUploadCount})
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
-            style={[styles.offlineToggleBtn, { marginTop: 10 }]}
+            style={[
+              styles.offlineToggleBtn,
+              !isPureWholesaler && { marginTop: 10 },
+            ]}
             onPress={() => void handleExportData()}
           >
             <Ionicons
@@ -754,7 +1319,9 @@ export default function GrowerAccountScreen() {
               color={Colors.walnutGreen[800]}
             />
             <Text style={styles.offlineToggleText}>
-              Export My Orchard Data (GDPR JSON)
+              {isPureWholesaler
+                ? 'Export My Buyer Data (GDPR JSON)'
+                : 'Export My Orchard & Trade Data (GDPR JSON)'}
             </Text>
           </TouchableOpacity>
 
@@ -765,12 +1332,12 @@ export default function GrowerAccountScreen() {
                 onPress={() => void signOutToOfflineMode()}
               >
                 <Ionicons
-                  name="airplane-outline"
+                  name="log-out-outline"
                   size={16}
                   color={Colors.walnutShell[700]}
                 />
                 <Text style={styles.offlineToggleText}>
-                  Log Out (Lock Orchard Menus)
+                  {isPureWholesaler ? 'Log Out' : 'Log Out (Lock Orchard Menus)'}
                 </Text>
               </TouchableOpacity>
 
@@ -820,6 +1387,73 @@ export default function GrowerAccountScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Cross-Platform Unsaved Changes Confirmation Modal */}
+      <Modal
+        visible={showUnsavedModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowUnsavedModal(false);
+          setPendingNavAction(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="warning" size={22} color="#B45309" />
+              <Text style={styles.modalTitle}>Unsaved Account Changes</Text>
+            </View>
+            <Text style={styles.modalDesc}>
+              {isSignedIn
+                ? 'You changed your account type, mobile number, or preferences without saving. Do you want to save and apply these changes now?'
+                : 'You entered registration details without creating the account yet. Discard changes or keep editing?'}
+            </Text>
+
+            {isSignedIn && (
+              <TouchableOpacity
+                style={styles.modalPrimaryBtn}
+                disabled={isSavingSettings}
+                onPress={() => void handleSaveAccountSettings(true)}
+              >
+                <Text style={styles.modalPrimaryText}>
+                  {isSavingSettings ? 'Saving...' : 'Save & Apply Now'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={styles.modalDangerBtn}
+              onPress={() => {
+                handleDiscardDrafts();
+                setShowUnsavedModal(false);
+                allowLeaveRef.current = true;
+                const action = pendingNavAction;
+                setPendingNavAction(null);
+                if (action) {
+                  navigation.dispatch(action);
+                } else if (isPureWholesaler) {
+                  router.replace('/(tabs)/marketplace');
+                } else {
+                  router.back();
+                }
+              }}
+            >
+              <Text style={styles.modalDangerText}>Discard & Leave</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalSecondaryBtn}
+              onPress={() => {
+                setShowUnsavedModal(false);
+                setPendingNavAction(null);
+              }}
+            >
+              <Text style={styles.modalSecondaryText}>Keep Editing</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1228,5 +1862,132 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: Colors.walnutGreen[900],
+  },
+  unsavedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 12,
+  },
+  unsavedBannerText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#92400E',
+    lineHeight: 17,
+  },
+  saveBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+  },
+  resetDraftBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.walnutShell[200],
+    backgroundColor: Colors.walnutShell[50],
+  },
+  resetDraftBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.walnutShell[700],
+  },
+  feedbackBox: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  feedbackError: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#F87171',
+  },
+  feedbackSuccess: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#4ADE80',
+  },
+  feedbackText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.walnutGreen[900],
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(17, 24, 15, 0.55)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: Colors.surface.card,
+    borderRadius: 16,
+    padding: 18,
+    gap: 10,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: Colors.walnutGreen[900],
+  },
+  modalDesc: {
+    fontSize: 13,
+    color: Colors.text.secondary,
+    lineHeight: 19,
+  },
+  modalPrimaryBtn: {
+    backgroundColor: Colors.walnutGreen[700],
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalPrimaryText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  modalDangerBtn: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    paddingVertical: 11,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalDangerText: {
+    color: '#991B1B',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  modalSecondaryBtn: {
+    backgroundColor: Colors.walnutGreen[50],
+    borderWidth: 1,
+    borderColor: Colors.surface.border,
+    paddingVertical: 11,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalSecondaryText: {
+    color: Colors.walnutGreen[900],
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  inputError: {
+    borderColor: '#DC2626',
+    borderWidth: 1.5,
+    backgroundColor: '#FEF2F2',
+  },
+  fieldErrorText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B91C1C',
+    marginTop: -6,
+    marginBottom: 8,
   },
 });

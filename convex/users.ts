@@ -179,9 +179,7 @@ export const getUserRole = query({
     return {
       role: isAdmin ? ('admin' as const) : ('grower' as const),
       isAdmin,
-      accountType:
-        existing?.accountType ??
-        (existing?.role === 'grower' ? ('producer' as const) : null),
+      accountType: existing?.accountType ?? null,
       phone: existing?.phone ?? null,
       whatsapp: existing?.whatsapp ?? null,
       email: existing?.email ?? normalizedEmail ?? null,
@@ -303,6 +301,137 @@ export const updateDualRolePreference = mutation({
       enableOrchardTools: args.enableOrchardTools,
     });
     return { enableOrchardTools: args.enableOrchardTools };
+  },
+});
+
+export const updateAccountSettings = mutation({
+  args: {
+    displayName: v.string(),
+    phone: v.string(),
+    whatsapp: v.optional(v.string()),
+    email: v.optional(v.string()),
+    accountType: v.union(v.literal('producer'), v.literal('wholesaler')),
+    enableOrchardTools: v.boolean(),
+    experienceLevel: v.optional(
+      v.union(
+        v.literal('beginner'),
+        v.literal('experienced'),
+        v.literal('expert')
+      )
+    ),
+    notificationTopics: v.optional(v.array(v.string())),
+    pushNotificationsEnabled: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const { identity, user } = await requireSignedIn(ctx);
+    const normalizedPhone = normalizeE164Phone(args.phone);
+    const normalizedWhatsapp = args.whatsapp?.trim()
+      ? normalizeE164Phone(args.whatsapp)
+      : undefined;
+    const normalizedEmail = sanitizeEmail(args.email ?? identity.email);
+    const cleanName = args.displayName.trim();
+    if (cleanName.length < 2) {
+      throw new Error('Display name must be at least 2 characters.');
+    }
+
+    const phoneOwner = await ctx.db
+      .query('users')
+      .withIndex('by_phone', (q) => q.eq('phone', normalizedPhone))
+      .first();
+    if (phoneOwner && phoneOwner.clerkId !== identity.subject) {
+      throw new Error(
+        'This mobile number is already linked to another WalnutIQ account.'
+      );
+    }
+
+    const effectiveEnableOrchardTools =
+      args.accountType === 'wholesaler' ? args.enableOrchardTools : false;
+
+    if (user) {
+      if (user.accountType && user.accountType !== args.accountType) {
+        const isAdmin = user.role === 'admin' || (await isAdminCaller(ctx));
+        if (!isAdmin) {
+          const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+          const myMessages = await ctx.db
+            .query('messages')
+            .withIndex('by_sender', (q) => q.eq('senderClerkId', identity.subject))
+            .collect();
+          const hasRecentRoleHallPost = myMessages.some(
+            (m) =>
+              (m.channelId === 'sellers_only' || m.channelId === 'buyers_only') &&
+              m.createdAtMs >= thirtyDaysAgo
+          );
+          if (hasRecentRoleHallPost) {
+            throw new Error(
+              `Role is temporarily locked to ${user.accountType} for 30 days after posting in a role-only hall. You can toggle Grower / Orchard Mode below instead.`
+            );
+          }
+        }
+      }
+
+      await ctx.db.patch(user._id, {
+        displayName: cleanName,
+        phone: normalizedPhone,
+        ...(normalizedWhatsapp ? { whatsapp: normalizedWhatsapp } : {}),
+        ...(normalizedEmail ? { email: normalizedEmail } : {}),
+        accountType: args.accountType,
+        enableOrchardTools: effectiveEnableOrchardTools,
+        marketplaceOnboardingComplete: true,
+        ...(args.experienceLevel !== undefined
+          ? { experienceLevel: args.experienceLevel }
+          : {}),
+        ...(args.notificationTopics !== undefined
+          ? { notificationTopics: args.notificationTopics }
+          : {}),
+        ...(args.pushNotificationsEnabled !== undefined
+          ? { pushNotificationsEnabled: args.pushNotificationsEnabled }
+          : {}),
+      });
+
+      return {
+        ok: true,
+        accountType: args.accountType,
+        enableOrchardTools: effectiveEnableOrchardTools,
+        phone: normalizedPhone,
+      };
+    }
+
+    const assignedRole: 'admin' | 'grower' =
+      normalizedEmail === ADMIN_EMAIL && identity.emailVerified !== false
+        ? 'admin'
+        : 'grower';
+
+    await ctx.db.insert('users', {
+      clerkId: identity.subject,
+      ...(normalizedEmail ? { email: normalizedEmail } : {}),
+      displayName: cleanName,
+      role: assignedRole,
+      authProvider: 'phone',
+      accountType: args.accountType,
+      phone: normalizedPhone,
+      phoneVerified: false,
+      ...(normalizedWhatsapp ? { whatsapp: normalizedWhatsapp } : {}),
+      enableOrchardTools: effectiveEnableOrchardTools,
+      marketplaceOnboardingComplete: true,
+      ...(args.experienceLevel !== undefined
+        ? { experienceLevel: args.experienceLevel }
+        : {}),
+      ...(args.notificationTopics !== undefined
+        ? { notificationTopics: args.notificationTopics }
+        : {}),
+      ...(args.pushNotificationsEnabled !== undefined
+        ? { pushNotificationsEnabled: args.pushNotificationsEnabled }
+        : {}),
+      accountStatus: 'active',
+      createdAtMs: Date.now(),
+    });
+
+    return {
+      ok: true,
+      accountType: args.accountType,
+      enableOrchardTools: effectiveEnableOrchardTools,
+      phone: normalizedPhone,
+    };
   },
 });
 

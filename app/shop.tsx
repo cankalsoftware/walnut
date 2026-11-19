@@ -62,13 +62,100 @@ function ConvexShopProductLoader({
 
 export default function OrchardHardwareShopScreen() {
   const router = useRouter();
-  const { isCloudConfigured } = useWalnutCloud();
+  const { isCloudConfigured, isSignedIn, userProfile } = useWalnutCloud();
   const [products, setProducts] = useState<ShopProduct[]>(INITIAL_SHOP_PRODUCTS);
   const [filter, setFilter] = useState<'all' | 'sensor' | 'switch' | 'kit'>(
     'all'
   );
   const [cart, setCart] = useState<Record<string, number>>({});
   const [orderMessage, setOrderMessage] = useState<string | null>(null);
+
+  const isPureWholesaler =
+    isSignedIn &&
+    userProfile.accountType === 'wholesaler' &&
+    !userProfile.enableOrchardTools;
+
+  if (isPureWholesaler) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 12 }}>
+          <View
+            style={{
+              backgroundColor: Colors.surface.card,
+              borderRadius: 16,
+              padding: 20,
+              borderWidth: 1,
+              borderColor: Colors.surface.border,
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <Ionicons
+              name="hardware-chip-outline"
+              size={36}
+              color={Colors.walnutGreen[700]}
+            />
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: '800',
+                color: Colors.walnutGreen[900],
+                textAlign: 'center',
+              }}
+            >
+              Orchard Hardware Shop Is for Growers
+            </Text>
+            <Text
+              style={{
+                fontSize: 13,
+                color: Colors.text.secondary,
+                textAlign: 'center',
+                lineHeight: 19,
+              }}
+            >
+              Soil moisture probes and drip irrigation valves are hidden while
+              you are in Wholesaler Buyer-Only mode. If you also own walnut
+              orchards, enable Grower / Orchard Mode in Account Settings.
+            </Text>
+            <TouchableOpacity
+              style={{
+                width: '100%',
+                backgroundColor: Colors.walnutGreen[600],
+                paddingVertical: 12,
+                borderRadius: 12,
+                alignItems: 'center',
+              }}
+              onPress={() => router.replace('/(tabs)/marketplace')}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13 }}>
+                Return to Marketplace
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                width: '100%',
+                backgroundColor: Colors.walnutGreen[100],
+                paddingVertical: 11,
+                borderRadius: 12,
+                alignItems: 'center',
+              }}
+              onPress={() => router.push('/auth')}
+            >
+              <Text
+                style={{
+                  color: Colors.walnutGreen[900],
+                  fontWeight: '800',
+                  fontSize: 13,
+                }}
+              >
+                Enable Grower Mode in Account →
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const visibleProducts =
     filter === 'all'

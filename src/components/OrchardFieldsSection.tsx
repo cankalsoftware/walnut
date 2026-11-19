@@ -66,11 +66,10 @@ export function OrchardFieldsSection() {
     attachQuadrantEvidenceBlob,
   } = useWalnutCloud();
 
-  const [selectedFieldId, setSelectedFieldId] = useState<string>(
-    fields[0]?.id ?? ''
-  );
-  const selectedField =
-    fields.find((f) => f.id === selectedFieldId) ?? fields[0];
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  const selectedField = selectedFieldId
+    ? fields.find((f) => f.id === selectedFieldId) ?? null
+    : null;
 
   // Add / Edit Field Modal state
   const [fieldModalVisible, setFieldModalVisible] = useState(false);
@@ -341,16 +340,29 @@ export function OrchardFieldsSection() {
             <TouchableOpacity
               key={field.id}
               style={[styles.fieldChip, active && styles.fieldChipActive]}
-              onPress={() => setSelectedFieldId(field.id)}
+              onPress={() =>
+                setSelectedFieldId((prev) =>
+                  prev === field.id ? null : field.id
+                )
+              }
             >
-              <Text
-                style={[
-                  styles.fieldChipTitle,
-                  active && styles.fieldChipTitleActive,
-                ]}
-              >
-                {field.name}
-              </Text>
+              <View style={styles.fieldChipTopRow}>
+                <Text
+                  style={[
+                    styles.fieldChipTitle,
+                    active && styles.fieldChipTitleActive,
+                  ]}
+                >
+                  {field.name}
+                </Text>
+                <Ionicons
+                  name={active ? 'chevron-up' : 'chevron-down'}
+                  size={15}
+                  color={
+                    active ? Colors.walnutGreen[800] : Colors.walnutShell[500]
+                  }
+                />
+              </View>
               <Text style={styles.fieldChipMeta}>
                 {field.treeCount} trees • {field.areaHectares} ha •{' '}
                 {field.seasonYear}
@@ -372,17 +384,30 @@ export function OrchardFieldsSection() {
                 {selectedField.plantedYear} • Season {selectedField.seasonYear}
               </Text>
             </View>
-            <TouchableOpacity
-              style={styles.editBtn}
-              onPress={() => openEditField(selectedField)}
-            >
-              <Ionicons
-                name="create-outline"
-                size={15}
-                color={Colors.walnutGreen[800]}
-              />
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() => openEditField(selectedField)}
+              >
+                <Ionicons
+                  name="create-outline"
+                  size={15}
+                  color={Colors.walnutGreen[800]}
+                />
+                <Text style={styles.editBtnText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityLabel="Collapse Field Block"
+                style={styles.collapseFieldBtn}
+                onPress={() => setSelectedFieldId(null)}
+              >
+                <Ionicons
+                  name="chevron-up"
+                  size={16}
+                  color={Colors.walnutGreen[800]}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Google Maps Pin & Field Note */}
@@ -908,6 +933,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.walnutGreen[200],
     backgroundColor: Colors.surface.card,
+  },
+  fieldChipTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  collapseFieldBtn: {
+    padding: 6,
+    borderRadius: 10,
+    backgroundColor: Colors.walnutGreen[100],
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   fieldChipActive: {
     borderColor: Colors.walnutGreen[700],

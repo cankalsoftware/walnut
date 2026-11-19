@@ -393,6 +393,17 @@ export interface WalnutCloudContextValue {
     enableOrchardTools?: boolean;
   }) => Promise<boolean>;
   setEnableOrchardTools: (enabled: boolean) => Promise<void>;
+  saveAccountSettings: (params: {
+    displayName: string;
+    phone: string;
+    whatsapp?: string;
+    email?: string;
+    accountType: AccountType;
+    enableOrchardTools: boolean;
+    experienceLevel?: GrowerExperienceLevel;
+    notificationTopics?: string[];
+    pushNotificationsEnabled?: boolean;
+  }) => Promise<{ ok: boolean; error?: string; recoveryCode?: string }>;
   signOutToOfflineMode: () => Promise<void>;
   deleteAccountAndData: () => Promise<boolean>;
   syncPendingToConvex: () => Promise<{ syncedCount: number }>;
@@ -572,6 +583,9 @@ function LiveClerkConvexStateProvider({
   const updateDualRoleMutation = useMutation(
     anyApi.users.updateDualRolePreference
   );
+  const updateAccountSettingsMutation = useMutation(
+    anyApi.users.updateAccountSettings
+  );
   const updateCarePreferencesMutation = useMutation(
     anyApi.users.updateGrowerCarePreferences
   );
@@ -635,6 +649,11 @@ function LiveClerkConvexStateProvider({
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [inspectingUserId, setInspectingUserId] = useState<string | null>(null);
   const [lastRecoveryCode, setLastRecoveryCode] = useState<string | null>(null);
+  const [optimisticAccountType, setOptimisticAccountType] =
+    useState<AccountType | null>(null);
+  const [optimisticOrchardTools, setOptimisticOrchardTools] = useState<
+    boolean | null
+  >(null);
 
   // Cloud queries — always 'skip' when unauthenticated so guests never hit live DB
   const liveUserRoleInfo = useQuery(
@@ -723,9 +742,31 @@ function LiveClerkConvexStateProvider({
   ) as MarketplaceMessageItem[] | undefined;
 
   const currentAccountType: AccountType =
-    liveUserRoleInfo?.accountType === 'wholesaler' ? 'wholesaler' : 'producer';
+    optimisticAccountType ?? liveUserRoleInfo?.accountType ?? 'producer';
+  const currentEnableOrchardTools =
+    optimisticOrchardTools ?? liveUserRoleInfo?.enableOrchardTools ?? false;
   const roleChannelId: 'sellers_only' | 'buyers_only' =
     currentAccountType === 'wholesaler' ? 'buyers_only' : 'sellers_only';
+
+  useEffect(() => {
+    if (
+      optimisticAccountType &&
+      liveUserRoleInfo?.accountType === optimisticAccountType
+    ) {
+      setOptimisticAccountType(null);
+    }
+    if (
+      optimisticOrchardTools !== null &&
+      liveUserRoleInfo?.enableOrchardTools === optimisticOrchardTools
+    ) {
+      setOptimisticOrchardTools(null);
+    }
+  }, [
+    liveUserRoleInfo?.accountType,
+    liveUserRoleInfo?.enableOrchardTools,
+    optimisticAccountType,
+    optimisticOrchardTools,
+  ]);
 
   const liveRoleMessages = useQuery(
     anyApi.marketplace.listRoleGroupMessages,
@@ -793,14 +834,18 @@ function LiveClerkConvexStateProvider({
       whatsapp: liveUserRoleInfo?.whatsapp ?? undefined,
       authProvider: hasGoogle ? 'google' : user.username?.startsWith('phone_') ? 'phone' : 'email',
       accountType: currentAccountType,
-      enableOrchardTools: liveUserRoleInfo?.enableOrchardTools ?? false,
+      enableOrchardTools: currentEnableOrchardTools,
       isMarketplaceOnboardingComplete:
         liveUserRoleInfo?.marketplaceOnboardingComplete ?? false,
       isWholesalerProfileComplete:
         liveUserRoleInfo?.isWholesalerProfileComplete ?? false,
       trustedSellerCount: liveUserRoleInfo?.trustedSellerCount ?? 0,
       trustedBuyerCount: liveUserRoleInfo?.trustedBuyerCount ?? 0,
-      region: careSetup.locationZone,
+      region:
+        liveMyWholesalerProfile?.region ||
+        (currentAccountType === 'wholesaler'
+          ? 'Regional Trade Hub'
+          : careSetup.locationZone),
       orchardName: `${name}'s Walnut Orchard`,
       experienceLevel,
       notificationTopics,
@@ -809,7 +854,9 @@ function LiveClerkConvexStateProvider({
   }, [
     user,
     liveUserRoleInfo,
+    liveMyWholesalerProfile?.region,
     currentAccountType,
+    currentEnableOrchardTools,
     careSetup.locationZone,
     experienceLevel,
     notificationTopics,
@@ -969,6 +1016,8 @@ function LiveClerkConvexStateProvider({
       await signUp.finalize();
       const recoveryCode = generateRecoveryCode();
       setLastRecoveryCode(recoveryCode);
+      setOptimisticAccountType(params.accountType);
+      setOptimisticOrchardTools(params.enableOrchardTools ?? false);
 
       // Brief tick for Convex auth context, then persist role + phone
       setTimeout(() => {
@@ -1053,6 +1102,8 @@ function LiveClerkConvexStateProvider({
         enableOrchardTools: params.enableOrchardTools ?? false,
         recoveryCode,
       });
+      setOptimisticAccountType(params.accountType);
+      setOptimisticOrchardTools(params.enableOrchardTools ?? false);
       setLastRecoveryCode(recoveryCode);
       setLastSyncMessage(
         `Saved Marketplace profile (${params.accountType.toUpperCase()} • ${normalizePhoneDigits(params.phone)}).`
@@ -1068,6 +1119,7 @@ function LiveClerkConvexStateProvider({
 
   const setEnableOrchardTools = async (enabled: boolean) => {
     try {
+      setOptimisticOrchardTools(enabled);
       await updateDualRoleMutation({ enableOrchardTools: enabled });
       setLastSyncMessage(
         enabled
@@ -1075,14 +1127,101 @@ function LiveClerkConvexStateProvider({
           : 'Switched back to clean Wholesaler Portal mode.'
       );
     } catch (err) {
+      setOptimisticOrchardTools(null);
       setLastSyncMessage(
         err instanceof Error ? err.message : 'Failed to toggle Orchard Mode'
       );
     }
   };
 
+  const saveAccountSettings: WalnutCloudContextValue['saveAccountSettings'] =
+    async (params) => {
+      const cleanName = params.displayName.trim();
+      const effectiveOrchard =
+        params.accountType === 'wholesaler' ? params.enableOrchardTools : false;
+      try {
+        if (cleanName.length < 2) {
+          throw new Error('Display name must be at least 2 characters.');
+        }
+        const normalizedPhone = normalizePhoneDigits(params.phone);
+        const normalizedWhatsapp = params.whatsapp?.trim()
+          ? normalizePhoneDigits(params.whatsapp)
+          : undefined;
+
+        setOptimisticAccountType(params.accountType);
+        setOptimisticOrchardTools(effectiveOrchard);
+        if (params.experienceLevel !== undefined) {
+          setExperienceLevel(params.experienceLevel);
+        }
+        if (params.notificationTopics !== undefined) {
+          setNotificationTopics(params.notificationTopics);
+        }
+        if (params.pushNotificationsEnabled !== undefined) {
+          setPushNotificationsEnabled(params.pushNotificationsEnabled);
+        }
+
+        if (!liveUserRoleInfo?.marketplaceOnboardingComplete) {
+          const recoveryCode = generateRecoveryCode();
+          await completeOnboardingMutation({
+            displayName: cleanName,
+            phone: normalizedPhone,
+            whatsapp: normalizedWhatsapp,
+            email: params.email?.trim() || undefined,
+            accountType: params.accountType,
+            enableOrchardTools: effectiveOrchard,
+            recoveryCode,
+          });
+          if (
+            params.experienceLevel !== undefined &&
+            params.notificationTopics !== undefined &&
+            params.pushNotificationsEnabled !== undefined
+          ) {
+            await updateCarePreferencesMutation({
+              experienceLevel: params.experienceLevel,
+              notificationTopics: params.notificationTopics,
+              pushNotificationsEnabled: params.pushNotificationsEnabled,
+              region: careSetup.locationZone,
+              orchardName: `${cleanName}'s Walnut Orchard`,
+            }).catch(() => {});
+          }
+          setLastRecoveryCode(recoveryCode);
+          setLastSyncMessage(
+            `Saved account settings (${params.accountType.toUpperCase()}). Save your recovery code!`
+          );
+          return { ok: true, recoveryCode };
+        }
+
+        await updateAccountSettingsMutation({
+          displayName: cleanName,
+          phone: normalizedPhone,
+          whatsapp: normalizedWhatsapp,
+          email: params.email?.trim() || undefined,
+          accountType: params.accountType,
+          enableOrchardTools: effectiveOrchard,
+          experienceLevel: params.experienceLevel,
+          notificationTopics: params.notificationTopics,
+          pushNotificationsEnabled: params.pushNotificationsEnabled,
+        });
+        setLastSyncMessage(
+          `Saved account settings (${params.accountType === 'wholesaler' ? (effectiveOrchard ? 'Dual-Role Wholesaler + Orchard' : 'Wholesaler Buyer') : 'Producer / Grower'}).`
+        );
+        return { ok: true };
+      } catch (err) {
+        setOptimisticAccountType(null);
+        setOptimisticOrchardTools(null);
+        const msg =
+          err instanceof Error
+            ? err.message
+            : 'Could not save account settings.';
+        setLastSyncMessage(msg);
+        return { ok: false, error: msg };
+      }
+    };
+
   const signOutToOfflineMode = async () => {
     try {
+      setOptimisticAccountType(null);
+      setOptimisticOrchardTools(null);
       await signOut();
       setLastSyncMessage(
         'Signed out to Offline Mode. Local SQLite records remain safe on your phone.'
@@ -1104,6 +1243,8 @@ function LiveClerkConvexStateProvider({
             deletedCount: number;
           };
           if (actionRes?.clerkDeletedServerSide) {
+            setOptimisticAccountType(null);
+            setOptimisticOrchardTools(null);
             clearAllSqliteCache();
             setLocalCache([]);
             setMarketplaceDrafts([]);
@@ -1131,6 +1272,8 @@ function LiveClerkConvexStateProvider({
           return false;
         }
       }
+      setOptimisticAccountType(null);
+      setOptimisticOrchardTools(null);
       await signOut();
       setLastSyncMessage(
         'Your WalnutIQ account, Convex data, and local SQLite cache have been permanently deleted.'
@@ -1610,6 +1753,7 @@ function LiveClerkConvexStateProvider({
     signInWithPhone,
     completeMarketplaceOnboarding,
     setEnableOrchardTools,
+    saveAccountSettings,
     signOutToOfflineMode,
     deleteAccountAndData,
     syncPendingToConvex,
@@ -1954,6 +2098,46 @@ function FallbackLocalStateProvider({
     },
     setEnableOrchardTools: async (enabled) => {
       setUserProfile((p) => ({ ...p, enableOrchardTools: enabled }));
+    },
+    saveAccountSettings: async (params) => {
+      try {
+        const cleanName = params.displayName.trim();
+        if (cleanName.length < 2) {
+          throw new Error('Display name must be at least 2 characters.');
+        }
+        const normalizedPhone = normalizePhoneDigits(params.phone);
+        const effectiveOrchard =
+          params.accountType === 'wholesaler' ? params.enableOrchardTools : false;
+        setUserProfile((p) => ({
+          ...p,
+          displayName: cleanName,
+          phone: normalizedPhone,
+          whatsapp: params.whatsapp?.trim()
+            ? normalizePhoneDigits(params.whatsapp)
+            : p.whatsapp,
+          email: params.email?.trim() || p.email,
+          accountType: params.accountType,
+          enableOrchardTools: effectiveOrchard,
+          isMarketplaceOnboardingComplete: true,
+          region:
+            params.accountType === 'wholesaler'
+              ? 'Regional Trade Hub'
+              : careSetup.locationZone,
+          experienceLevel: params.experienceLevel ?? p.experienceLevel,
+          notificationTopics: params.notificationTopics ?? p.notificationTopics,
+          pushNotificationsEnabled:
+            params.pushNotificationsEnabled ?? p.pushNotificationsEnabled,
+        }));
+        setLastSyncMessage(
+          `Saved account settings (${params.accountType.toUpperCase()} • Local Mode).`
+        );
+        return { ok: true };
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : 'Failed to save settings.';
+        setLastSyncMessage(msg);
+        return { ok: false, error: msg };
+      }
     },
     signOutToOfflineMode: async () => {
       setIsSignedIn(false);

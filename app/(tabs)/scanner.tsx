@@ -7,7 +7,7 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/theme/colors';
 import {
@@ -26,9 +26,21 @@ const QUADRANTS: CanopyQuadrant[] = ['North', 'East', 'South', 'West'];
 
 export default function CameraAiScreen() {
   const router = useRouter();
-  const { isSignedIn } = useWalnutCloud();
+  const { isSignedIn, userProfile } = useWalnutCloud();
   const params = useLocalSearchParams<{ mode?: string }>();
   const [mode, setMode] = useState<ScannerMode>('canopy');
+  const [selectedTreeIndex, setSelectedTreeIndex] = useState(0);
+  const [frameSeed, setFrameSeed] = useState(1);
+  const [activeQuadrant, setActiveQuadrant] = useState<CanopyQuadrant>('North');
+  const [quadrantCounts, setQuadrantCounts] = useState<
+    Record<CanopyQuadrant, number>
+  >({
+    North: 64,
+    East: 58,
+    South: 68,
+    West: 58,
+  });
+  const [groundPickedSession, setGroundPickedSession] = useState(42);
 
   useEffect(() => {
     if (
@@ -48,18 +60,13 @@ export default function CameraAiScreen() {
       />
     );
   }
-  const [selectedTreeIndex, setSelectedTreeIndex] = useState(0);
-  const [frameSeed, setFrameSeed] = useState(1);
-  const [activeQuadrant, setActiveQuadrant] = useState<CanopyQuadrant>('North');
-  const [quadrantCounts, setQuadrantCounts] = useState<
-    Record<CanopyQuadrant, number>
-  >({
-    North: 64,
-    East: 58,
-    South: 68,
-    West: 58,
-  });
-  const [groundPickedSession, setGroundPickedSession] = useState(42);
+
+  if (
+    userProfile.accountType === 'wholesaler' &&
+    !userProfile.enableOrchardTools
+  ) {
+    return <Redirect href="/(tabs)/marketplace" />;
+  }
 
   const weightsStatus = getWeightsStatus();
   const activeTree = INITIAL_TREES[selectedTreeIndex];

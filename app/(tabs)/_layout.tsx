@@ -9,10 +9,10 @@ export default function TabsLayout() {
   const router = useRouter();
   const { isSignedIn, userProfile } = useWalnutCloud();
 
-  const showOrchardTabs =
-    !isSignedIn ||
-    userProfile.accountType === 'producer' ||
-    userProfile.enableOrchardTools;
+  const isWholesaler = isSignedIn && userProfile.accountType === 'wholesaler';
+  const isPureWholesaler = isWholesaler && !userProfile.enableOrchardTools;
+  const isDualRole = isWholesaler && userProfile.enableOrchardTools;
+  const showOrchardTabs = !isPureWholesaler;
 
   const lockedTabListeners = {
     tabPress: (e: { preventDefault: () => void }) => {
@@ -25,63 +25,66 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      initialRouteName={isPureWholesaler ? 'marketplace' : 'index'}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: Colors.walnutGreen[700],
         tabBarInactiveTintColor: Colors.text.muted,
         tabBarStyle: styles.tabBar,
-        tabBarLabelStyle: styles.tabLabel,
+        tabBarLabelStyle: isDualRole
+          ? [styles.tabLabel, styles.tabLabelCompact]
+          : styles.tabLabel,
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Orchard',
-          href: showOrchardTabs ? undefined : null,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="leaf" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="calendar"
-        listeners={lockedTabListeners}
-        options={{
-          title: isSignedIn ? 'Care Plan' : 'Care Plan 🔒',
-          href: showOrchardTabs ? undefined : null,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons
-              name={isSignedIn ? 'calendar' : 'lock-closed'}
-              size={size}
-              color={isSignedIn ? color : Colors.text.muted}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="scanner"
-        listeners={lockedTabListeners}
-        options={{
-          title: 'Camera',
-          href: showOrchardTabs ? undefined : null,
-          tabBarLabel: () => null,
-          tabBarIcon: ({ focused }) => (
-            <View
-              style={[
-                styles.centerScannerBtn,
-                focused && styles.centerScannerBtnActive,
-                !isSignedIn && styles.centerScannerBtnLocked,
-              ]}
-            >
+      <Tabs.Protected guard={showOrchardTabs}>
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Orchard',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="leaf" size={isDualRole ? 20 : size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="calendar"
+          listeners={lockedTabListeners}
+          options={{
+            title: isSignedIn ? 'Care Plan' : 'Care Plan 🔒',
+            tabBarIcon: ({ color, size }) => (
               <Ionicons
-                name={isSignedIn ? 'camera' : 'lock-closed'}
-                size={24}
-                color="#FFFFFF"
+                name={isSignedIn ? 'calendar' : 'lock-closed'}
+                size={isDualRole ? 20 : size}
+                color={isSignedIn ? color : Colors.text.muted}
               />
-            </View>
-          ),
-        }}
-      />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="scanner"
+          listeners={lockedTabListeners}
+          options={{
+            title: 'Camera',
+            tabBarLabel: () => null,
+            tabBarIcon: ({ focused }) => (
+              <View
+                style={[
+                  styles.centerScannerBtn,
+                  isDualRole && styles.centerScannerBtnCompact,
+                  focused && styles.centerScannerBtnActive,
+                  !isSignedIn && styles.centerScannerBtnLocked,
+                ]}
+              >
+                <Ionicons
+                  name={isSignedIn ? 'camera' : 'lock-closed'}
+                  size={isDualRole ? 20 : 24}
+                  color="#FFFFFF"
+                />
+              </View>
+            ),
+          }}
+        />
+      </Tabs.Protected>
       <Tabs.Screen
         name="marketplace"
         listeners={lockedTabListeners}
@@ -90,7 +93,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons
               name={isSignedIn ? 'storefront' : 'lock-closed'}
-              size={size}
+              size={isDualRole ? 20 : size}
               color={isSignedIn ? color : Colors.text.muted}
             />
           ),
@@ -100,11 +103,15 @@ export default function TabsLayout() {
         name="community"
         listeners={lockedTabListeners}
         options={{
-          title: isSignedIn ? 'Community' : 'Community 🔒',
+          title: !isSignedIn
+            ? 'Community 🔒'
+            : isWholesaler
+              ? 'Buyers Hall'
+              : 'Community',
           tabBarIcon: ({ color, size }) => (
             <Ionicons
               name={isSignedIn ? 'chatbubbles' : 'lock-closed'}
-              size={size}
+              size={isDualRole ? 20 : size}
               color={isSignedIn ? color : Colors.text.muted}
             />
           ),
@@ -114,12 +121,25 @@ export default function TabsLayout() {
         name="analytics"
         listeners={lockedTabListeners}
         options={{
-          title: isSignedIn ? 'Setup & Data' : 'Setup 🔒',
-          href: showOrchardTabs ? null : undefined,
+          title: !isSignedIn
+            ? 'Setup 🔒'
+            : isWholesaler
+              ? 'Buyer Desk'
+              : 'Setup & Data',
+          tabBarItemStyle: isWholesaler
+            ? { flex: 1, display: 'flex' }
+            : { display: 'none' },
+          tabBarButton: isWholesaler ? undefined : () => null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons
-              name={isSignedIn ? 'options' : 'lock-closed'}
-              size={size}
+              name={
+                !isSignedIn
+                  ? 'lock-closed'
+                  : isWholesaler
+                    ? 'briefcase'
+                    : 'options'
+              }
+              size={isDualRole ? 20 : size}
               color={isSignedIn ? color : Colors.text.muted}
             />
           ),
@@ -143,6 +163,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  tabLabelCompact: {
+    fontSize: 9.5,
+    fontWeight: '700',
+  },
   centerScannerBtn: {
     width: 52,
     height: 52,
@@ -158,6 +182,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 6,
     elevation: 6,
+  },
+  centerScannerBtnCompact: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginBottom: 2,
   },
   centerScannerBtnActive: {
     backgroundColor: Colors.walnutGreen[700],
